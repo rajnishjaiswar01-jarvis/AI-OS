@@ -9,14 +9,20 @@ interface StatusItem {
 }
 
 export default function SystemStatus() {
+  /**
+   * NOTE: CPU and Memory values below are simulated placeholder data for the
+   * web-based demo. Real system metrics (via OS-level APIs) will be implemented
+   * in a future desktop version using Electron or Tauri.
+   */
   const [stats, setStats] = useState<StatusItem[]>([
     { label: 'CPU', value: '23%', percentage: 23, color: 'var(--color-primary)' },
     { label: 'Memory', value: '4.2 / 16 GB', percentage: 26, color: 'var(--color-accent)' },
     { label: 'AI Core', value: 'Online', color: '#4ade80' },
-    { label: 'Version', value: 'AI OS v1.0', color: 'var(--color-text-secondary)' },
+    { label: 'Version', value: 'AI OS v0.1.0', color: 'var(--color-text-secondary)' },
   ]);
 
-  // Fake fluctuating CPU/Memory values
+  // TODO: Replace with real system metrics when migrating to Electron/Tauri.
+  // These randomised values simulate CPU & Memory fluctuations for the web demo.
   useEffect(() => {
     const timer = setInterval(() => {
       setStats((prev) =>
@@ -73,6 +79,16 @@ export default function SystemStatus() {
             )}
           </div>
         ))}
+
+        {/* Subtle indicator that metrics are simulated in the web demo */}
+        <div className="flex justify-end pt-1">
+          <span
+            className="text-[9px] uppercase tracking-widest font-medium"
+            style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}
+          >
+            Simulated
+          </span>
+        </div>
       </div>
     </Widget>
   );
