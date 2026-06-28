@@ -12,7 +12,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: '2',
     sender: 'ai',
-    text: "I'm your AI assistant. I can help with tasks, answer questions, and manage your workspace. Currently running in Phase 1 mode.",
+    text: "I'm your AI assistant. I can help with tasks, answer questions, and manage your workspace. Currently running in v0.1.0 mode.",
     timestamp: new Date(Date.now() - 55000),
   },
   {
@@ -62,7 +62,7 @@ export default function Chat() {
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: "I'm not connected yet. Coming in Phase 2! 🚀",
+        text: "I'm not connected yet. Coming in v0.2.0! 🚀",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMsg]);

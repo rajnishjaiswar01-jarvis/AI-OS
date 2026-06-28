@@ -58,7 +58,7 @@ export default function AiOrb() {
           background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
           boxShadow: '0 0 20px rgba(79, 140, 255, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.1)',
         }}
-        title="AI Orb — Coming in Phase 2"
+        title="AI Orb — Coming in v0.2.0"
       >
         {/* Inner shine */}
         <div

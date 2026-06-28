@@ -107,8 +107,8 @@ export default function Settings() {
               <span className="font-mono">1.0.0</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-[var(--color-text-secondary)]">Phase</span>
-              <span className="font-mono">1 — Interface</span>
+              <span className="text-[var(--color-text-secondary)]">Milestone</span>
+              <span className="font-mono">v0.1.0 — Desktop Foundation</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-[var(--color-text-secondary)]">AI Status</span>
