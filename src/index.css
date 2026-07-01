@@ -238,3 +238,54 @@ html, body, #root {
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
+
+/* ═══════════════════════════════════════════
+   AI Orb State Animations
+   ═══════════════════════════════════════════ */
+
+@keyframes pulseFast {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+.animate-pulse-fast {
+  animation: pulseFast 1.2s ease-in-out infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* ═══════════════════════════════════════════
+   Markdown Prose Styles (Chat AI Responses)
+   ═══════════════════════════════════════════ */
+
+.markdown-prose {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.markdown-prose > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-prose > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Code block wrapper */
+.code-block-wrapper {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .code-block-wrapper {
+  background: rgba(0, 0, 0, 0.04);
+}
+

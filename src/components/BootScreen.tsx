@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
+import { APP_VERSION } from '../config/app';
 
 const BOOT_MESSAGES = [
   'Starting AI OS...',
@@ -65,7 +66,7 @@ export default function BootScreen() {
           </h1>
         </div>
         <p className="text-center text-sm text-[var(--color-text-muted)] mt-2 tracking-widest">
-          v1.0
+          {APP_VERSION}
         </p>
       </div>
 

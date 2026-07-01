@@ -9,7 +9,7 @@ AI OS reimagines the desktop experience with a futuristic, glass-morphism UI dri
 - 🖥️ **Desktop Environment** — Draggable, resizable windowed panels
 - 🎨 **Theme Engine** — Dark / Light mode with smooth transitions
 - 🌌 **Dynamic Wallpapers** — Space and Aurora gradient backgrounds
-- 💬 **AI Chat** — Conversational interface (AI backend coming in v0.2.0)
+- 💬 **AI Chat** — Conversational AI powered by Gemini with markdown rendering
 - ✦ **AI Orb** — Ambient, interactive AI presence indicator
 - ⚙️ **Settings Panel** — Theme toggle, wallpaper picker, system info
 - 🕐 **Clock Widget** — Real-time clock on the desktop
@@ -20,6 +20,7 @@ AI OS reimagines the desktop experience with a futuristic, glass-morphism UI dri
 - **React 19** + **TypeScript**
 - **Vite** — Lightning-fast dev server and build tool
 - **Zustand** — Lightweight state management
+- **Google Gemini API** — AI language model
 - **CSS Variables** — Theming with custom properties
 - **Tailwind CSS** — Utility-first styling
 
@@ -47,11 +48,14 @@ src/
 │   ├── AiOrb.tsx      # AI presence orb
 │   ├── BootScreen.tsx # Startup animation
 │   ├── ClockWidget.tsx
+│   ├── CodeBlock.tsx  # Reusable code block with syntax highlighting
 │   ├── Desktop.tsx    # Main desktop layout
 │   ├── Dock.tsx       # macOS-style dock
 │   ├── Panel.tsx      # Draggable window panel
 │   ├── TopBar.tsx     # System top bar
 │   └── ...
+├── config/            # Application & AI configuration
+├── services/          # AI service layer
 ├── stores/            # Zustand state stores
 ├── types/             # TypeScript type definitions
 ├── index.css          # Global styles & design tokens
@@ -67,11 +71,15 @@ src/
 - Boot screen animation
 - Clock widget and system status indicators
 
-### Version 0.2.0 — AI Integration
-- Connect AI assistant backend (LLM API)
-- Real-time AI chat with streaming responses
-- AI Orb activation with context-aware interactions
-- Smart command palette
+### Version 0.2.0 — AI Core ✅
+- Gemini AI integration with session conversation memory
+- Markdown rendering with syntax-highlighted code blocks
+- Reusable CodeBlock component with copy button
+- Retry response and stop generation controls
+- Token usage tracking
+- Improved AI personality with Hinglish/Roman Hindi support
+- Smart auto-scroll
+- Production-ready error handling
 
 ### Version 0.3.0 — Voice Assistant & Voice Prompt Engine
 - Voice input/output for AI interactions

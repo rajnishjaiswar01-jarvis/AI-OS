@@ -9,7 +9,13 @@ export type Wallpaper = 'space' | 'aurora';
 
 export interface ChatMessage {
   id: string;
-  sender: 'user' | 'ai';
-  text: string;
+  role: 'user' | 'assistant';
+  content: string;
   timestamp: Date;
+  isError?: boolean;
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
 }

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import Widget from './Widget';
+import { useChatStore } from '../stores/chatStore';
+import { APP_VERSION } from '../config/app';
 
 interface StatusItem {
   label: string;
@@ -8,18 +10,46 @@ interface StatusItem {
   color: string;
 }
 
+const getAiCoreDisplay = (status: string): { value: string; color: string } => {
+  switch (status) {
+    case 'thinking':
+      return { value: 'Thinking...', color: 'var(--color-primary-light)' };
+    case 'error':
+      return { value: 'Error', color: '#f87171' };
+    default:
+      return { value: 'Online', color: '#4ade80' };
+  }
+};
+
 export default function SystemStatus() {
+  const aiStatus = useChatStore((s) => s.aiStatus);
+
   /**
    * NOTE: CPU and Memory values below are simulated placeholder data for the
    * web-based demo. Real system metrics (via OS-level APIs) will be implemented
    * in a future desktop version using Electron or Tauri.
    */
+
+  const aiCore = getAiCoreDisplay(aiStatus);
+
   const [stats, setStats] = useState<StatusItem[]>([
     { label: 'CPU', value: '23%', percentage: 23, color: 'var(--color-primary)' },
     { label: 'Memory', value: '4.2 / 16 GB', percentage: 26, color: 'var(--color-accent)' },
-    { label: 'AI Core', value: 'Online', color: '#4ade80' },
-    { label: 'Version', value: 'AI OS v0.1.0', color: 'var(--color-text-secondary)' },
+    { label: 'AI Core', value: aiCore.value, color: aiCore.color },
+    { label: 'Version', value: `AI OS ${APP_VERSION}`, color: 'var(--color-text-secondary)' },
   ]);
+
+  // Update AI Core status whenever aiStatus changes
+  useEffect(() => {
+    const core = getAiCoreDisplay(aiStatus);
+    setStats((prev) =>
+      prev.map((stat) =>
+        stat.label === 'AI Core'
+          ? { ...stat, value: core.value, color: core.color }
+          : stat
+      )
+    );
+  }, [aiStatus]);
 
   // TODO: Replace with real system metrics when migrating to Electron/Tauri.
   // These randomised values simulate CPU & Memory fluctuations for the web demo.
@@ -56,7 +86,9 @@ export default function SystemStatus() {
                     className="w-1.5 h-1.5 rounded-full"
                     style={{
                       backgroundColor: stat.color,
-                      animation: 'pulse-dot 2s ease-in-out infinite',
+                      animation: aiStatus === 'thinking'
+                        ? 'pulse-dot 0.8s ease-in-out infinite'
+                        : 'pulse-dot 2s ease-in-out infinite',
                     }}
                   />
                 )}

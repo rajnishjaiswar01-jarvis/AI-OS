@@ -1,5 +1,8 @@
 import Panel from '../../components/Panel';
 import { useAppStore } from '../../stores/appStore';
+import { useChatStore } from '../../stores/chatStore';
+import { isAiConfigured } from '../../config/ai';
+import { APP_VERSION } from '../../config/app';
 import type { Wallpaper } from '../../types';
 
 const WALLPAPERS: { id: Wallpaper; name: string; gradient: string }[] = [
@@ -17,6 +20,21 @@ const WALLPAPERS: { id: Wallpaper; name: string; gradient: string }[] = [
 
 export default function Settings() {
   const { theme, toggleTheme, wallpaper, setWallpaper } = useAppStore();
+  const aiStatus = useChatStore((s) => s.aiStatus);
+  const configured = isAiConfigured();
+
+  // Derive AI status display
+  const getAiStatusDisplay = () => {
+    if (!configured) {
+      return { text: 'Not Configured', color: '#facc15' }; // yellow
+    }
+    if (aiStatus === 'error') {
+      return { text: 'Error', color: '#f87171' }; // red
+    }
+    return { text: 'Connected', color: '#4ade80' }; // green
+  };
+
+  const aiStatusDisplay = getAiStatusDisplay();
 
   return (
     <Panel appId="settings" title="Settings" width="400px" height="480px">
@@ -104,15 +122,26 @@ export default function Settings() {
           <div className="glass rounded-xl p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-[var(--color-text-secondary)]">Version</span>
-              <span className="font-mono">1.0.0</span>
+              <span className="font-mono">{APP_VERSION}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-[var(--color-text-secondary)]">Milestone</span>
-              <span className="font-mono">v0.1.0 — Desktop Foundation</span>
+              <span className="font-mono">v0.2.0 — AI Core</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-[var(--color-text-secondary)]">AI Status</span>
-              <span className="font-mono text-yellow-400">Not Connected</span>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{
+                    backgroundColor: aiStatusDisplay.color,
+                    animation: configured && aiStatus !== 'error' ? 'pulse-dot 2s ease-in-out infinite' : 'none',
+                  }}
+                />
+                <span className="font-mono" style={{ color: aiStatusDisplay.color }}>
+                  {aiStatusDisplay.text}
+                </span>
+              </div>
             </div>
           </div>
         </section>
