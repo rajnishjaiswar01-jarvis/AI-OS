@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
-import { useAppStore } from './stores/appStore';
-import BootScreen from './components/BootScreen';
-import Desktop from './components/Desktop';
+import { useShellStore } from '@shell/shellStore';
+import { useSettingsStore } from '@features/settings/settingsStore';
+import BootScreen from '@shell/components/BootScreen';
+import Desktop from '@shell/components/Desktop';
 
 export default function App() {
-  const { booted, theme } = useAppStore();
+  const booted = useShellStore((s) => s.booted);
+  const theme = useSettingsStore((s) => s.theme);
 
   // Sync theme attribute on mount
   useEffect(() => {
