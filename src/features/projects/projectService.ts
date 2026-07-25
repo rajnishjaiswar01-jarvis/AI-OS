@@ -15,9 +15,13 @@
  */
 
 import { projectRepository } from './projectRepository';
+import { settingsRepository } from '@core/db/settingsRepository';
 import { useProjectStore } from './projectStore';
 import { DomainError } from '@core/errors/DomainError';
 import type { Project } from '@core/db/types';
+
+/** Settings key for persisting the active project ID */
+const ACTIVE_PROJECT_KEY = 'activeProjectId';
 
 // ─── Project Service ─────────────────────────────────────────────────
 
@@ -28,7 +32,14 @@ export const projectService = {
    */
   async loadProjects(): Promise<void> {
     const projects = await projectRepository.findAll();
-    useProjectStore.getState().setProjects(projects);
+    const store = useProjectStore.getState();
+    store.setProjects(projects);
+
+    // Restore persisted active project
+    const savedActiveId = await settingsRepository.get<string>(ACTIVE_PROJECT_KEY);
+    if (savedActiveId && projects.some((p) => p.id === savedActiveId)) {
+      store.setActiveProject(savedActiveId);
+    }
   },
 
   /**
@@ -67,6 +78,9 @@ export const projectService = {
     const store = useProjectStore.getState();
     store.addProject(project);
     store.setActiveProject(project.id);
+
+    // Persist active project selection
+    await settingsRepository.set(ACTIVE_PROJECT_KEY, project.id);
 
     return project;
   },
@@ -117,19 +131,28 @@ export const projectService = {
    * Note: In Sprint 2+, this will also cascade-delete files and tasks.
    */
   async deleteProject(id: string): Promise<void> {
+    const wasActive = useProjectStore.getState().activeProjectId === id;
+
     // Persist first
     await projectRepository.remove(id);
 
     // Then update store (removeProject handles active project clearing)
     useProjectStore.getState().removeProject(id);
+
+    // Clear persisted active if deleted project was active
+    if (wasActive) {
+      await settingsRepository.set(ACTIVE_PROJECT_KEY, null);
+    }
   },
 
   /**
    * Set the active project.
    * Called when user clicks a project in the list.
    */
-  setActiveProject(id: string | null): void {
+  async setActiveProject(id: string | null): Promise<void> {
     useProjectStore.getState().setActiveProject(id);
+    // Persist selection so it survives page reload
+    await settingsRepository.set(ACTIVE_PROJECT_KEY, id);
   },
 
   /**
