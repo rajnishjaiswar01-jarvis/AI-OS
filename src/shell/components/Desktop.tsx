@@ -1,12 +1,12 @@
+import { Suspense } from 'react';
 import { useShellStore } from '@shell/shellStore';
 import { useSettingsStore } from '@features/settings/settingsStore';
+import { getApp } from '@core/registry/registry';
 import TopBar from './TopBar';
 import Dock from './Dock';
 import AiOrb from './AiOrb';
 import Clock from './Clock';
 import SystemStatus from './SystemStatus';
-import Chat from '@ai/chat/components/Chat';
-import SettingsPanel from '@features/settings/components/SettingsPanel';
 
 export default function Desktop() {
   const wallpaper = useSettingsStore((s) => s.wallpaper);
@@ -49,9 +49,15 @@ export default function Desktop() {
       {/* Dock */}
       <Dock />
 
-      {/* Open App Panels */}
-      {openApps.includes('chat') && <Chat />}
-      {openApps.includes('settings') && <SettingsPanel />}
+      {/* Open App Panels — dynamically rendered from registry */}
+      <Suspense fallback={null}>
+        {openApps.map((appId) => {
+          const app = getApp(appId);
+          if (!app) return null;
+          const AppComponent = app.component;
+          return <AppComponent key={appId} />;
+        })}
+      </Suspense>
     </div>
   );
 }
