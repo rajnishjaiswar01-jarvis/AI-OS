@@ -1,12 +1,23 @@
+/**
+ * AI OS — Desktop (Sprint 1A)
+ *
+ * Root shell layout using CSS Grid with four zones:
+ *   TopBar  → shell-topbar
+ *   Sidebar → shell-sidebar (contains project name, clock, system status)
+ *   Canvas  → desktop-canvas (windows render here)
+ *   Dock    → shell-dock
+ *
+ * This replaces the v0.2 flat layout where widgets were absolute-positioned.
+ */
+
 import { Suspense } from 'react';
 import { useShellStore } from '@shell/shellStore';
 import { useSettingsStore } from '@features/settings/settingsStore';
 import { getApp } from '@core/registry/registry';
 import TopBar from './TopBar';
 import Dock from './Dock';
+import Sidebar from './Sidebar';
 import AiOrb from './AiOrb';
-import Clock from './Clock';
-import SystemStatus from './SystemStatus';
 
 export default function Desktop() {
   const wallpaper = useSettingsStore((s) => s.wallpaper);
@@ -15,7 +26,7 @@ export default function Desktop() {
   return (
     <div
       className={`
-        fixed inset-0
+        shell-layout
         wallpaper-${wallpaper}
         transition-all duration-500
         animate-fade-in
@@ -31,33 +42,40 @@ export default function Desktop() {
           `,
           animation: 'auroraShift 15s ease-in-out infinite',
           backgroundSize: '200% 200%',
+          zIndex: 0,
         }}
       />
 
-      {/* Top Bar */}
-      <TopBar />
-
-      {/* Widgets Area */}
-      <div className="absolute top-16 left-6 space-y-4 w-64 animate-fade-in" style={{ animationDelay: '100ms' }}>
-        <Clock />
-        <SystemStatus />
+      {/* ─── TopBar Zone ──────────────────────────────────────────── */}
+      <div className="shell-topbar">
+        <TopBar />
       </div>
 
-      {/* AI Orb */}
-      <AiOrb />
+      {/* ─── Sidebar Zone ─────────────────────────────────────────── */}
+      <Sidebar />
 
-      {/* Dock */}
-      <Dock />
+      {/* ─── Desktop Canvas (Window Rendering Area) ───────────────── */}
+      <div className="desktop-canvas">
+        {/* AI Orb — floats on the canvas */}
+        <AiOrb />
 
-      {/* Open App Panels — dynamically rendered from registry */}
-      <Suspense fallback={null}>
-        {openApps.map((appId) => {
-          const app = getApp(appId);
-          if (!app) return null;
-          const AppComponent = app.component;
-          return <AppComponent key={appId} />;
-        })}
-      </Suspense>
+        {/* Open App Panels — dynamically rendered from registry */}
+        {/* Sprint 1D will replace this with <WindowCanvas /> */}
+        <Suspense fallback={null}>
+          {openApps.map((appId) => {
+            const app = getApp(appId);
+            if (!app) return null;
+            const AppComponent = app.component;
+            return <AppComponent key={appId} />;
+          })}
+        </Suspense>
+      </div>
+
+      {/* ─── Dock Zone ────────────────────────────────────────────── */}
+      <div className="shell-dock">
+        <Dock />
+      </div>
     </div>
   );
 }
+

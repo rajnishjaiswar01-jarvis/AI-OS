@@ -289,3 +289,126 @@ html, body, #root {
   background: rgba(0, 0, 0, 0.04);
 }
 
+/* ═══════════════════════════════════════════
+   Shell Layout (Sprint 1A)
+   ═══════════════════════════════════════════ */
+
+/**
+ * Shell layout uses CSS Grid:
+ *
+ * ┌─────────────────────────────────────────┐
+ * │ TopBar (fixed, z-50)                    │
+ * ├───────┬─────────────────────────────────┤
+ * │       │                                 │
+ * │ Side  │     Desktop Canvas              │
+ * │ bar   │     (windows render here)       │
+ * │       │                                 │
+ * ├───────┴─────────────────────────────────┤
+ * │ Dock (fixed, z-50)                      │
+ * └─────────────────────────────────────────┘
+ */
+
+.shell-layout {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "topbar  topbar"
+    "sidebar canvas"
+    "dock    dock";
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.shell-topbar {
+  grid-area: topbar;
+  z-index: 50;
+}
+
+.shell-sidebar {
+  grid-area: sidebar;
+  z-index: 10;
+  width: 240px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              padding 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.shell-sidebar.collapsed {
+  width: 40px;
+  padding: 8px 4px;
+}
+
+.desktop-canvas {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.shell-dock {
+  grid-area: dock;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding-bottom: 16px;
+}
+
+/* ─── Sidebar Components ──────────────────────────────────────────── */
+
+.sidebar-section {
+  padding: 12px;
+}
+
+.sidebar-project-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-project-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  z-index: 11;
+  transition: all 200ms ease;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  backdrop-filter: blur(12px);
+}
+
+.sidebar-toggle:hover {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
