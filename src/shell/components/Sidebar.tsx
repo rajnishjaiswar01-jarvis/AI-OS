@@ -1,8 +1,8 @@
 /**
- * AI OS — Sidebar (Sprint 1A)
+ * AI OS — Sidebar (Sprint 1A + 1B)
  *
  * Left-side shell panel containing:
- * - Active project name (or "No Project")
+ * - Active project name (wired to projectStore)
  * - Clock widget (relocated from desktop overlay)
  * - SystemStatus widget (relocated from desktop overlay)
  *
@@ -11,19 +11,23 @@
  */
 
 import { useState } from 'react';
+import { useProjectStore } from '@features/projects/projectStore';
 import Clock from './Clock';
 import SystemStatus from './SystemStatus';
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
-  // Sprint 1B will wire this to projectStore.
-  // For now, show "No Project" as the neutral state.
-  const activeProjectName: string | null = null;
+  // Read active project from store
+  const projects = useProjectStore((s) => s.projects);
+  const activeProjectId = useProjectStore((s) => s.activeProjectId);
+  const activeProject = activeProjectId
+    ? projects.find((p) => p.id === activeProjectId)
+    : null;
 
   return (
     <div className={`shell-sidebar ${collapsed ? 'collapsed' : ''}`}>
-      {/* Collapse/Expand Toggle — positioned as first child for accessibility */}
+      {/* Collapse/Expand Toggle */}
       <button
         className="glass glass-hover rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105"
         onClick={() => setCollapsed(!collapsed)}
@@ -45,7 +49,7 @@ export default function Sidebar() {
           <div className="glass glass-glow rounded-lg sidebar-section">
             <div className="sidebar-project-label">Project</div>
             <div className="sidebar-project-name">
-              {activeProjectName || 'No Project'}
+              {activeProject ? activeProject.name : 'No Project'}
             </div>
           </div>
 

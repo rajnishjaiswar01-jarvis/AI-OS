@@ -13,12 +13,20 @@ import { registerApp } from './registry';
 
 // ─── Lazy-loaded App Components ──────────────────────────────────────
 
+const ProjectsPanel = lazy(() => import('@features/projects/components/ProjectsPanel'));
 const Chat = lazy(() => import('@ai/chat/components/Chat'));
 const SettingsPanel = lazy(() => import('@features/settings/components/SettingsPanel'));
 
 // ─── Registration ────────────────────────────────────────────────────
 
 export function registerBuiltinApps(): void {
+  registerApp({
+    id: 'projects',
+    name: 'Projects',
+    icon: '📁',
+    component: ProjectsPanel,
+  });
+
   registerApp({
     id: 'chat',
     name: 'Chat',
