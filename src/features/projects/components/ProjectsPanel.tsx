@@ -17,7 +17,6 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import Panel from '@shell/components/Panel';
 import { useProjectStore } from '../projectStore';
 import { projectService } from '../projectService';
 import type { Project } from '@core/db/types';
@@ -316,7 +315,6 @@ export default function ProjectsPanel() {
   // ─── Render ──────────────────────────────────────────────────────
 
   return (
-    <Panel appId="projects" title="Projects" width="420px" height="520px">
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
@@ -482,6 +480,5 @@ export default function ProjectsPanel() {
         />
       )}
     </div>
-    </Panel>
   );
 }

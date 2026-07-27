@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import Panel from '@shell/components/Panel';
+
 import MarkdownRenderer from './MarkdownRenderer';
 import { useChatStore } from '@ai/chat/chatStore';
 import { generateResponse, AiServiceError } from '@ai/chat/aiService';
@@ -392,7 +392,6 @@ export default function Chat() {
   const hasMessages = messages.length > 0;
 
   return (
-    <Panel appId="chat" title="Chat" width="520px" height="620px">
       <div className="flex flex-col h-full">
         {/* Header bar with New Chat button */}
         {hasMessages && (
@@ -570,6 +569,5 @@ export default function Chat() {
           </div>
         </div>
       </div>
-    </Panel>
   );
 }

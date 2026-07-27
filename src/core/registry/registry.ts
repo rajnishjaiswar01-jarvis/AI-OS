@@ -26,6 +26,17 @@ export interface AppDefinition {
    * features are enabled. Defaults to false.
    */
   experimental?: boolean;
+  /**
+   * Default window dimensions when opening this app.
+   * Falls back to 480×560 if not specified.
+   */
+  defaultSize?: { width: number; height: number };
+  /**
+   * If true, only one instance of this app can be open at a time.
+   * Opening a singleton app that's already open will focus the existing window.
+   * @default false
+   */
+  singleton?: boolean;
 }
 
 // ─── Registry State ──────────────────────────────────────────────────

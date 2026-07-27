@@ -1,5 +1,5 @@
 /**
- * AI OS — Desktop (Sprint 1A)
+ * AI OS — Desktop (Sprint 1D)
  *
  * Root shell layout using CSS Grid with four zones:
  *   TopBar  → shell-topbar
@@ -7,21 +7,33 @@
  *   Canvas  → desktop-canvas (windows render here)
  *   Dock    → shell-dock
  *
- * This replaces the v0.2 flat layout where widgets were absolute-positioned.
+ * The Desktop is a pure renderer. It reads window state from windowStore
+ * and delegates app resolution to the Window component (which uses windowManager).
+ * Desktop never imports the app registry directly.
  */
 
-import { Suspense } from 'react';
-import { useShellStore } from '@shell/shellStore';
+import { Suspense, useMemo } from 'react';
+import { useWindowStore } from '@shell/windowStore';
+import { WindowState } from '@shell/windowTypes';
 import { useSettingsStore } from '@features/settings/settingsStore';
-import { getApp } from '@core/registry/registry';
 import TopBar from './TopBar';
 import Dock from './Dock';
 import Sidebar from './Sidebar';
 import AiOrb from './AiOrb';
+import Window from './Window';
 
 export default function Desktop() {
   const wallpaper = useSettingsStore((s) => s.wallpaper);
-  const openApps = useShellStore((s) => s.openApps);
+  const windows = useWindowStore((s) => s.windows);
+
+  // Derive visible windows from raw state (avoids new-reference infinite loop)
+  const visibleWindows = useMemo(
+    () =>
+      windows
+        .filter((w) => w.state !== WindowState.Minimized)
+        .sort((a, b) => a.zIndex - b.zIndex),
+    [windows]
+  );
 
   return (
     <div
@@ -59,15 +71,11 @@ export default function Desktop() {
         {/* AI Orb — floats on the canvas */}
         <AiOrb />
 
-        {/* Open App Panels — dynamically rendered from registry */}
-        {/* Sprint 1D will replace this with <WindowCanvas /> */}
+        {/* Windows — rendered from windowStore */}
         <Suspense fallback={null}>
-          {openApps.map((appId) => {
-            const app = getApp(appId);
-            if (!app) return null;
-            const AppComponent = app.component;
-            return <AppComponent key={appId} />;
-          })}
+          {visibleWindows.map((win) => (
+            <Window key={win.id} window={win} />
+          ))}
         </Suspense>
       </div>
 
@@ -78,4 +86,3 @@ export default function Desktop() {
     </div>
   );
 }
-

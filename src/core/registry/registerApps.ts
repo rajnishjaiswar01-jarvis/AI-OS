@@ -25,6 +25,8 @@ export function registerBuiltinApps(): void {
     name: 'Projects',
     icon: '📁',
     component: ProjectsPanel,
+    singleton: true,
+    defaultSize: { width: 420, height: 520 },
   });
 
   registerApp({
@@ -32,6 +34,8 @@ export function registerBuiltinApps(): void {
     name: 'Chat',
     icon: '💬',
     component: Chat,
+    singleton: true,
+    defaultSize: { width: 480, height: 600 },
   });
 
   registerApp({
@@ -39,6 +43,8 @@ export function registerBuiltinApps(): void {
     name: 'Settings',
     icon: '⚙️',
     component: SettingsPanel,
+    singleton: true,
+    defaultSize: { width: 480, height: 560 },
   });
 
   // Future apps will be registered here:

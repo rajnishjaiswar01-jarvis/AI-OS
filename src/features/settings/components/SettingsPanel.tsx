@@ -1,4 +1,3 @@
-import Panel from '@shell/components/Panel';
 import { useSettingsStore } from '@features/settings/settingsStore';
 import type { Wallpaper } from '@features/settings/settingsStore';
 import { useChatStore } from '@ai/chat/chatStore';
@@ -37,7 +36,6 @@ export default function SettingsPanel() {
   const aiStatusDisplay = getAiStatusDisplay();
 
   return (
-    <Panel appId="settings" title="Settings" width="400px" height="480px">
       <div className="p-5 space-y-6">
         {/* Theme Section */}
         <section>
@@ -146,6 +144,5 @@ export default function SettingsPanel() {
           </div>
         </section>
       </div>
-    </Panel>
   );
 }

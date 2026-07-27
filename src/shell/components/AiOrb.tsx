@@ -12,18 +12,17 @@
 
 import { useState, useCallback } from 'react';
 import { useChatStore } from '@ai/chat/chatStore';
-import { useShellStore } from '@shell/shellStore';
+import { windowManager } from '@shell/windowManager';
 
 export default function AiOrb() {
   const aiStatus = useChatStore((s) => s.aiStatus);
-  const openApp = useShellStore((s) => s.openApp);
   const [ripple, setRipple] = useState(false);
 
   const handleClick = useCallback(() => {
     setRipple(true);
     setTimeout(() => setRipple(false), 600);
-    openApp('chat');
-  }, [openApp]);
+    windowManager.open('chat');
+  }, []);
 
   // ─── State-driven styles ─────────────────────────────────────────
 
