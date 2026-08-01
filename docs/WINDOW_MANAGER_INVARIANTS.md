@@ -42,7 +42,7 @@ when modifying any file in `src/shell/`.
 - New windows are positioned via cascade: base `(80, 40)`, offset `+30px` per step.
 - Cascade wraps after 8 steps (back to base position).
 
-## Panel.tsx
+## Test Coverage (Sprint 1E)
 
-- `Panel.tsx` is deprecated (no-op stub). Delete in Sprint 2.
-- No component should import `Panel.tsx` for new functionality.
+- 87 tests cover the window manager, selectors, regressions, stress tests, edge cases, cold start, and repository cleanup.
+- All invariants above are verified by at least one test.

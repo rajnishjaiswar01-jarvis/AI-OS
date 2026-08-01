@@ -106,6 +106,7 @@ export default function AiOrb() {
           (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${glowColor}, inset 0 0 20px rgba(255, 255, 255, 0.1)`;
         }}
         title="Open AI Chat"
+        aria-label="Open AI Chat"
       >
         {/* Inner shine */}
         <div

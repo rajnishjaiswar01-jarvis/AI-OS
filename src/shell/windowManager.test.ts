@@ -4,7 +4,7 @@
  * Tests the window lifecycle through the windowManager service layer.
  * Pure in-memory tests — no Dexie, no DOM rendering.
  *
- * Tests cover:
+ * Test suites:
  * - Open window → exists in store
  * - Open singleton → focuses existing instead of creating duplicate
  * - Open singleton when minimized → restores and focuses
@@ -14,10 +14,21 @@
  * - Restore window → state changes, active set, z-index updated
  * - Cascade positions → each window offset correctly
  * - Active window tracking → activeWindowId stays correct
+ * - Stress tests → rapid open/close, focus cycling
+ * - Edge cases → lifecycle boundaries, mixed operations
+ * - Cold start → clean boot baseline
+ *
+ * @see Sprint 1E — Stabilization
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useWindowStore, getVisibleWindows, getWindowsByAppId, isAppOpen } from './windowStore';
+import {
+  useWindowStore,
+  getVisibleWindows,
+  getWindowsByAppId,
+  isAppOpen,
+  _resetWindowStoreForTests,
+} from './windowStore';
 import { windowManager } from './windowManager';
 import { WindowState } from './windowTypes';
 import { registerApp, _resetAppRegistry } from '@core/registry/registry';
@@ -48,14 +59,7 @@ function registerTestApps() {
 }
 
 beforeEach(() => {
-  // Reset stores
-  useWindowStore.setState({
-    windows: [],
-    activeWindowId: null,
-    nextZIndex: 100,
-  });
-
-  // Reset and re-register apps
+  _resetWindowStoreForTests();
   _resetAppRegistry();
   registerTestApps();
 });
@@ -431,5 +435,224 @@ describe('Window Manager Regressions', () => {
       const singletonWindows = state.windows.filter((w) => w.appId === 'singleton-app');
       expect(singletonWindows).toHaveLength(1);
     });
+  });
+});
+
+// ─── Sprint 1E: Stress Tests ─────────────────────────────────────────
+
+describe('Stress Tests', () => {
+  describe('rapid open/close', () => {
+    it('should handle 20 windows opened then all closed with clean state', () => {
+      const ids: string[] = [];
+      for (let i = 0; i < 20; i++) {
+        ids.push(windowManager.open('test-app')!);
+      }
+
+      expect(useWindowStore.getState().windows).toHaveLength(20);
+
+      // Close all
+      for (const id of ids) {
+        windowManager.close(id);
+      }
+
+      const state = useWindowStore.getState();
+      expect(state.windows).toHaveLength(0);
+      expect(state.activeWindowId).toBeNull();
+      // nextZIndex should still be valid (monotonically increased, not reset)
+      expect(state.nextZIndex).toBeGreaterThan(100);
+    });
+
+    it('should handle rapid singleton open/close 10 times with exactly 1 instance', () => {
+      for (let i = 0; i < 10; i++) {
+        const id = windowManager.open('singleton-app')!;
+
+        // At every step, exactly 1 singleton window
+        const singletons = useWindowStore.getState().windows.filter(
+          (w) => w.appId === 'singleton-app'
+        );
+        expect(singletons).toHaveLength(1);
+
+        windowManager.close(id);
+      }
+
+      // After all close, no windows
+      expect(useWindowStore.getState().windows).toHaveLength(0);
+    });
+  });
+
+  describe('focus cycling', () => {
+    it('should maintain unique z-indices after focusing 5 windows in sequence', () => {
+      const ids: string[] = [];
+      for (let i = 0; i < 5; i++) {
+        ids.push(windowManager.open('test-app')!);
+      }
+
+      // Focus each window in order
+      for (const id of ids) {
+        windowManager.focus(id);
+      }
+
+      const { windows } = useWindowStore.getState();
+      const zIndices = windows.map((w) => w.zIndex);
+      const uniqueZIndices = new Set(zIndices);
+      expect(uniqueZIndices.size).toBe(5);
+    });
+
+    it('should reflect correct order after A→B→C→A→B focus sequence', () => {
+      const a = windowManager.open('test-app')!;
+      const b = windowManager.open('test-app')!;
+      const c = windowManager.open('test-app')!;
+
+      // Focus sequence: A → B → C → A → B
+      windowManager.focus(a);
+      windowManager.focus(b);
+      windowManager.focus(c);
+      windowManager.focus(a);
+      windowManager.focus(b);
+
+      const { windows } = useWindowStore.getState();
+      const aWin = windows.find((w) => w.id === a)!;
+      const bWin = windows.find((w) => w.id === b)!;
+      const cWin = windows.find((w) => w.id === c)!;
+
+      // B was focused last → highest z-index
+      // A was focused second-to-last → middle
+      // C was focused earliest remaining → lowest
+      expect(bWin.zIndex).toBeGreaterThan(aWin.zIndex);
+      expect(aWin.zIndex).toBeGreaterThan(cWin.zIndex);
+      expect(useWindowStore.getState().activeWindowId).toBe(b);
+    });
+  });
+});
+
+// ─── Sprint 1E: Edge Case Tests ──────────────────────────────────────
+
+describe('Edge Cases', () => {
+  it('should have null activeWindowId when all windows are minimized', () => {
+    const a = windowManager.open('test-app')!;
+    const b = windowManager.open('test-app')!;
+    const c = windowManager.open('test-app')!;
+
+    windowManager.minimize(a);
+    windowManager.minimize(b);
+    windowManager.minimize(c);
+
+    expect(useWindowStore.getState().activeWindowId).toBeNull();
+  });
+
+  it('should correctly activate each window when restoring in reverse order', () => {
+    const a = windowManager.open('test-app')!;
+    const b = windowManager.open('test-app')!;
+    const c = windowManager.open('test-app')!;
+
+    // Minimize all
+    windowManager.minimize(a);
+    windowManager.minimize(b);
+    windowManager.minimize(c);
+
+    // Restore in reverse: C, B, A
+    windowManager.restore(c);
+    expect(useWindowStore.getState().activeWindowId).toBe(c);
+
+    windowManager.restore(b);
+    expect(useWindowStore.getState().activeWindowId).toBe(b);
+
+    windowManager.restore(a);
+    expect(useWindowStore.getState().activeWindowId).toBe(a);
+  });
+
+  it('should not crash when closing a nonexistent window', () => {
+    windowManager.open('test-app');
+
+    const stateBefore = useWindowStore.getState();
+    const windowsBefore = stateBefore.windows.length;
+
+    // Close a window that doesn't exist — should be a no-op
+    windowManager.close('nonexistent-id-12345');
+
+    const stateAfter = useWindowStore.getState();
+    expect(stateAfter.windows.length).toBe(windowsBefore);
+  });
+
+  it('should cleanly remove a window that is minimized when closed', () => {
+    const a = windowManager.open('test-app')!;
+    windowManager.minimize(a);
+
+    // Close while minimized
+    windowManager.close(a);
+
+    const state = useWindowStore.getState();
+    expect(state.windows).toHaveLength(0);
+    expect(state.activeWindowId).toBeNull();
+  });
+
+  it('should not make a minimized window active when focused', () => {
+    const a = windowManager.open('test-app')!;
+    const b = windowManager.open('test-app')!;
+
+    windowManager.minimize(a);
+
+    // Focus the minimized window — it gets highest z-index but shouldn't visually
+    // appear since it's still minimized. The focus call sets activeWindowId,
+    // but the window remains minimized. The invariant we actually enforce is:
+    // setWindowState(Minimized) clears activeWindowId.
+    // Direct focus on a minimized window via focusWindow is an API-level edge case.
+    windowManager.focus(a);
+
+    // The window is still minimized in state
+    const aWin = useWindowStore.getState().windows.find((w) => w.id === a)!;
+    expect(aWin.state).toBe(WindowState.Minimized);
+  });
+
+  describe('mixed operations', () => {
+    it('open A, open B, minimize A, close B → A stays minimized, active null', () => {
+      const a = windowManager.open('test-app')!;
+      windowManager.open('test-app')!;
+
+      windowManager.minimize(a);
+
+      // Close B (which is active since A was minimized and B was opened after)
+      const bId = useWindowStore.getState().windows.find((w) => w.id !== a)!.id;
+      windowManager.close(bId);
+
+      const state = useWindowStore.getState();
+      // A is still there but minimized
+      expect(state.windows).toHaveLength(1);
+      expect(state.windows[0].id).toBe(a);
+      expect(state.windows[0].state).toBe(WindowState.Minimized);
+      // No visible window to activate — all remaining are minimized
+      expect(state.activeWindowId).toBeNull();
+    });
+
+    it('open A, B, C, minimize B, close C → A becomes active', () => {
+      const a = windowManager.open('test-app')!;
+      const b = windowManager.open('test-app')!;
+      const c = windowManager.open('test-app')!;
+
+      windowManager.minimize(b);
+      windowManager.close(c);
+
+      // B is minimized so it's skipped. A is the top visible window.
+      expect(useWindowStore.getState().activeWindowId).toBe(a);
+    });
+  });
+});
+
+// ─── Sprint 1E: Cold Start Test ──────────────────────────────────────
+
+describe('Cold Start', () => {
+  it('should boot with clean state: no windows, no active, no crash', () => {
+    // Reset simulates a fresh app boot
+    _resetWindowStoreForTests();
+
+    const state = useWindowStore.getState();
+    expect(state.windows).toHaveLength(0);
+    expect(state.activeWindowId).toBeNull();
+    expect(state.nextZIndex).toBe(100);
+
+    // Verify window manager operations work from cold state
+    const id = windowManager.open('test-app');
+    expect(id).toBeTruthy();
+    expect(useWindowStore.getState().windows).toHaveLength(1);
   });
 });

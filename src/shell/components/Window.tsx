@@ -18,6 +18,7 @@
 
 import { useEffect, useState, Suspense, type ComponentType } from 'react';
 import { windowManager } from '@shell/windowManager';
+import { useWindowStore } from '@shell/windowStore';
 import type { WindowInstance } from '@shell/windowTypes';
 
 // ─── Props ───────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ export default function Window({ window: win }: WindowProps) {
   // Resolve the app component via windowManager (keeps registry behind the manager)
   const AppComponent = windowManager.getAppComponent(win.appId) as ComponentType | null;
   const appIcon = windowManager.getAppIcon(win.appId);
+  const isActive = useWindowStore((s) => s.activeWindowId === win.id);
 
   // Entry animation
   useEffect(() => {
@@ -63,6 +65,7 @@ export default function Window({ window: win }: WindowProps) {
         window glass glass-glow
         ${mounted && !closing ? 'animate-slide-up' : ''}
         ${closing ? 'animate-slide-down' : ''}
+        ${isActive ? 'window-active' : ''}
       `}
       style={{
         left: win.position.x,

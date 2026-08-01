@@ -117,3 +117,15 @@ export function getWindowsByAppId(state: WindowStoreState, appId: string): Windo
 export function isAppOpen(state: WindowStoreState, appId: string): boolean {
   return state.windows.some((w) => w.appId === appId);
 }
+
+/**
+ * Reset the window store to its initial state. Primarily for testing.
+ * @internal
+ */
+export function _resetWindowStoreForTests(): void {
+  useWindowStore.setState({
+    windows: [],
+    activeWindowId: null,
+    nextZIndex: BASE_Z,
+  });
+}

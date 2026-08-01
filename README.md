@@ -1,28 +1,42 @@
 # AI OS
 
-> A next-generation, AI-powered operating system interface built with React, TypeScript, and Vite.
+> An AI-native workspace foundation built with React, TypeScript, and Vite.
 
-AI OS reimagines the desktop experience with a futuristic, glass-morphism UI driven by artificial intelligence. It features a fully interactive desktop environment with a dock, top bar, windowed apps, themes, wallpapers, and an AI assistant — all running in the browser.
+AI OS is a browser-based desktop environment designed as the foundation for an AI-powered workspace. It features a window manager, app registry, project system, AI chat, and a glass-morphism design language — all built on a layered architecture with persistent storage.
 
 ## ✨ Features
 
-- 🖥️ **Desktop Environment** — Draggable, resizable windowed panels
-- 🎨 **Theme Engine** — Dark / Light mode with smooth transitions
-- 🌌 **Dynamic Wallpapers** — Space and Aurora gradient backgrounds
-- 💬 **AI Chat** — Conversational AI powered by Gemini with markdown rendering
-- ✦ **AI Orb** — Ambient, interactive AI presence indicator
-- ⚙️ **Settings Panel** — Theme toggle, wallpaper picker, system info
-- 🕐 **Clock Widget** — Real-time clock on the desktop
-- 🚀 **Boot Screen** — Cinematic startup animation
+### Desktop Shell
+- 🖥️ **Window Manager** — Cascading windows with z-index ordering, focus tracking, minimize/restore
+- 🧩 **App Registry** — Centralized app definitions with singleton enforcement and lazy loading
+- ⚓ **Dock** — App launcher with active indicators and hover tooltips
+- 📊 **Sidebar** — Collapsible panel with project context, clock, and system status
+- 🎨 **Theme Engine** — Dark/light modes with CSS custom properties
+- 🌌 **Dynamic Wallpapers** — Space and aurora gradient backgrounds
+- 🚀 **Boot Screen** — Cinematic startup animation with phase indicators
+
+### AI Integration
+- 💬 **AI Chat** — Conversational AI powered by Google Gemini with markdown rendering
+- ✦ **AI Orb** — Ambient presence indicator with state-driven animations (ready, thinking, error)
+- 📝 **Markdown Rendering** — Syntax-highlighted code blocks with copy support
+
+### Workspace
+- 📁 **Project System** — Create, rename, delete projects with Dexie persistence
+- ⚙️ **Settings** — Theme, wallpaper, and system configuration
+- 💾 **Persistence** — IndexedDB via Dexie.js with repository abstraction
 
 ## 🛠️ Tech Stack
 
-- **React 19** + **TypeScript**
-- **Vite** — Lightning-fast dev server and build tool
-- **Zustand** — Lightweight state management
-- **Google Gemini API** — AI language model
-- **CSS Variables** — Theming with custom properties
-- **Tailwind CSS** — Utility-first styling
+| Layer | Technology |
+|-------|-----------|
+| **UI** | React 19 + TypeScript |
+| **Build** | Vite 8 |
+| **State** | Zustand 5 |
+| **Persistence** | Dexie.js (IndexedDB) |
+| **AI** | Google Gemini API |
+| **Styling** | Tailwind CSS 4 + CSS custom properties |
+| **Testing** | Vitest + fake-indexeddb |
+| **Linting** | oxlint |
 
 ## 🚀 Getting Started
 
@@ -33,77 +47,121 @@ npm install
 # Start development server
 npm run dev
 
+# Run tests
+npm test
+
+# Type checking
+npm run typecheck
+
 # Build for production
 npm run build
 ```
 
-## 📦 Project Structure
+## 📦 Architecture
 
 ```
 src/
-├── apps/              # Windowed applications
-│   ├── Chat/          # AI Chat interface
-│   └── Settings/      # System settings panel
-├── components/        # Shared UI components
-│   ├── AiOrb.tsx      # AI presence orb
-│   ├── BootScreen.tsx # Startup animation
-│   ├── ClockWidget.tsx
-│   ├── CodeBlock.tsx  # Reusable code block with syntax highlighting
-│   ├── Desktop.tsx    # Main desktop layout
-│   ├── Dock.tsx       # macOS-style dock
-│   ├── Panel.tsx      # Draggable window panel
-│   ├── TopBar.tsx     # System top bar
-│   └── ...
-├── config/            # Application & AI configuration
-├── services/          # AI service layer
-├── stores/            # Zustand state stores
-├── types/             # TypeScript type definitions
-├── index.css          # Global styles & design tokens
-└── main.tsx           # App entry point
+├── ai/                    # AI layer
+│   ├── chat/              # Chat UI, service, and store
+│   ├── config.ts          # AI configuration
+│   └── providers/         # Provider registry and types
+├── core/                  # Core infrastructure
+│   ├── config/            # App-wide configuration
+│   ├── db/                # Dexie database, types, repositories
+│   ├── errors/            # Error handling
+│   ├── hooks/             # Shared React hooks
+│   ├── registry/          # App registry and boot-time registration
+│   ├── types/             # Shared TypeScript types
+│   └── utils/             # Utility functions
+├── features/              # Feature modules
+│   ├── files/             # File manager (Sprint 2)
+│   ├── memory/            # Memory system (Sprint 2)
+│   ├── notes/             # Notes app (Sprint 2)
+│   ├── projects/          # Project CRUD + persistence
+│   ├── settings/          # Settings panel + store
+│   └── tasks/             # Task manager (Sprint 2)
+├── shell/                 # Desktop shell
+│   ├── components/        # Desktop, Window, Dock, TopBar, Sidebar, AiOrb
+│   ├── shellStore.ts      # Boot lifecycle store
+│   ├── windowManager.ts   # Window orchestration layer
+│   ├── windowStore.ts     # Window state (Zustand)
+│   └── windowTypes.ts     # Window data model
+├── ui/                    # Reusable UI primitives
+├── index.css              # Design tokens and layout system
+└── main.tsx               # Entry point
+```
+
+### Layered Architecture
+
+```
+UI Components
+    ↓
+Window Manager (orchestration)
+    ↓
+Window Store (state)        App Registry (definitions)
+    ↓
+Repository Layer
+    ↓
+Dexie (IndexedDB)
+```
+
+**Key invariants:**
+- Desktop is a pure renderer — never imports the app registry
+- Components never mutate stores directly — always through service/manager layers
+- Window Manager is the only orchestration layer between UI and Window Store
+- See [WINDOW_MANAGER_INVARIANTS.md](docs/WINDOW_MANAGER_INVARIANTS.md) for the full list
+
+## 🧪 Testing
+
+87 tests across 4 test suites:
+
+| Suite | Coverage |
+|-------|----------|
+| Window Manager | Lifecycle, singleton, focus, z-index, cascade, stress, edge cases |
+| Window Store Selectors | Visible windows, app queries |
+| Project Service | CRUD, persistence, hydration, cleanup |
+| Database | Tables, CRUD, settings, memory |
+
+```bash
+npm test              # Run all tests
+npm run test:watch    # Watch mode
+npm run test:ui       # Interactive UI
 ```
 
 ## 🗺️ Roadmap
 
-### Version 0.1.0 — Desktop Foundation ✅
-- Glass-morphism desktop environment
-- Dock, top bar, and windowed panel system
-- Theme engine (dark/light) with wallpaper selection
-- Boot screen animation
-- Clock widget and system status indicators
+### v0.1 — UI Foundation ✅
+Glass-morphism desktop, dock, top bar, theme engine, boot screen, wallpapers
 
-### Version 0.2.0 — AI Core ✅
-- Gemini AI integration with session conversation memory
-- Markdown rendering with syntax-highlighted code blocks
-- Reusable CodeBlock component with copy button
-- Retry response and stop generation controls
-- Token usage tracking
-- Improved AI personality with Hinglish/Roman Hindi support
-- Smart auto-scroll
-- Production-ready error handling
+### v0.2 — AI Core ✅
+Gemini integration, markdown rendering, AI Orb, error handling, token tracking
 
-### Version 0.3.0 — Voice Assistant & Voice Prompt Engine
-- Voice input/output for AI interactions
-- Wake-word detection
-- Voice-driven command execution
-- Text-to-speech responses
+### v0.3 — Workspace Foundation 🔄
+- **Sprint 0:** Dexie persistence, project CRUD ✅
+- **Sprint 1A–1D:** Window Manager, app registry, shell layout ✅
+- **Sprint 1E:** Stabilization — stress tests, edge cases, accessibility ✅
+- **Sprint 2:** Notes, Files, Tasks, Memory ← *next*
 
-### Version 0.4.0 — App Ecosystem
-- File manager with virtual filesystem
-- Terminal emulator
-- Notes and code editor apps
-- App marketplace / plugin system
+### v0.4 — Local Intelligence
+Context-aware AI, workspace-integrated suggestions
 
-### Version 0.5.0 — Multi-Agent Workflows
-- Multiple AI agents with specialized roles
-- Agent-to-agent communication
-- Task delegation and parallel execution
-- Workflow automation builder
+### v0.5 — Developer Platform
+Plugin system, extensible app framework
 
-### Version 1.0.0 — Production Release
-- Performance optimization and accessibility
-- PWA support with offline capabilities
-- End-to-end encryption for AI interactions
-- Public API and developer SDK
+### v1.0 — AI Operating Environment
+Full workspace with persistent AI memory, multi-agent workflows
+
+## 📚 Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [VISION_LOCK.md](docs/VISION_LOCK.md) | Product vision and constraints |
+| [PRODUCT_SPECIFICATION.md](docs/PRODUCT_SPECIFICATION.md) | v0.3 feature specification |
+| [ENGINEERING_DECISIONS.md](docs/ENGINEERING_DECISIONS.md) | Technical decisions and rationale |
+| [ARCHITECTURE_REVIEW.md](docs/ARCHITECTURE_REVIEW.md) | Architecture review findings |
+| [WINDOW_MANAGER_INVARIANTS.md](docs/WINDOW_MANAGER_INVARIANTS.md) | Window system rules |
+| [VERSION_ROADMAP.md](docs/VERSION_ROADMAP.md) | Full version plan |
+| [DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md) | Code standards and patterns |
 
 ## 📄 License
 

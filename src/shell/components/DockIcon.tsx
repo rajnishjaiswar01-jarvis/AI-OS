@@ -23,6 +23,7 @@ export default function DockIcon({ icon, label, onClick, active = false }: DockI
       {/* Icon Button */}
       <button
         onClick={onClick}
+        aria-label={label}
         className={`
           w-12 h-12 rounded-xl flex items-center justify-center text-xl
           glass glass-hover cursor-pointer

@@ -262,4 +262,38 @@ describe('Project Service', () => {
       expect(persisted).toBe(project.id);
     });
   });
+
+  // ─── Sprint 1E: Repository Cleanup Regression ───────────────────────
+
+  describe('repository cleanup (Sprint 1E)', () => {
+    it('should fully remove project from DB after delete and reload', async () => {
+      // Create a project
+      const project = await projectService.createProject('Cleanup Test');
+      expect(project.id).toBeTruthy();
+
+      // Verify it exists in Dexie
+      const beforeDelete = await projectRepository.findById(project.id);
+      expect(beforeDelete).toBeDefined();
+
+      // Delete through service
+      await projectService.deleteProject(project.id);
+
+      // Verify gone from store
+      expect(useProjectStore.getState().projects).toHaveLength(0);
+
+      // Reset store to simulate app restart
+      useProjectStore.setState({ projects: [], activeProjectId: null });
+
+      // Reload from Dexie — project should not reappear
+      await projectService.loadProjects();
+
+      const { projects } = useProjectStore.getState();
+      expect(projects).toHaveLength(0);
+
+      // Double-check directly in Dexie
+      const afterReload = await projectRepository.findById(project.id);
+      expect(afterReload).toBeUndefined();
+    });
+  });
 });
+
