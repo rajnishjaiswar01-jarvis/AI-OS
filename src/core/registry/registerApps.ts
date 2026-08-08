@@ -16,6 +16,7 @@ import { registerApp } from './registry';
 const ProjectsPanel = lazy(() => import('@features/projects/components/ProjectsPanel'));
 const Chat = lazy(() => import('@ai/chat/components/Chat'));
 const SettingsPanel = lazy(() => import('@features/settings/components/SettingsPanel'));
+const NotesPanel = lazy(() => import('@features/notes/components/NotesPanel'));
 
 // ─── Registration ────────────────────────────────────────────────────
 
@@ -36,6 +37,15 @@ export function registerBuiltinApps(): void {
     component: Chat,
     singleton: true,
     defaultSize: { width: 480, height: 600 },
+  });
+
+  registerApp({
+    id: 'notes',
+    name: 'Notes',
+    icon: '📝',
+    component: NotesPanel,
+    singleton: true,
+    defaultSize: { width: 680, height: 520 },
   });
 
   registerApp({

@@ -39,3 +39,22 @@ export interface MemoryEntry {
   /** ISO 8601 timestamp */
   createdAt: string;
 }
+
+// ─── Note ────────────────────────────────────────────────────────────
+
+export interface Note {
+  /** Primary key (UUID v4) */
+  id: string;
+  /** Foreign key to Project — notes are always project-scoped */
+  projectId: string;
+  /** User-visible note title */
+  title: string;
+  /** Markdown-compatible plain text content */
+  content: string;
+  /** Soft delete flag — hidden from UI but recoverable */
+  isDeleted: boolean;
+  /** ISO 8601 creation timestamp */
+  createdAt: string;
+  /** ISO 8601 last-modified timestamp */
+  updatedAt: string;
+}

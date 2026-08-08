@@ -473,3 +473,287 @@ html, body, #root {
     0 0 0 1px rgba(79, 140, 255, 0.2);
 }
 
+/* ═══════════════════════════════════════════
+   Notes Module (Sprint 2)
+   ═══════════════════════════════════════════ */
+
+/**
+ * Notes layout uses a horizontal split:
+ *
+ * ┌──────────┬─────────────────────────────┐
+ * │ Sidebar  │ Editor Pane                 │
+ * │ (200px)  │                             │
+ * │ ──────── │ Title: [_______________]    │
+ * │ + New    │                             │
+ * │          │ ┌─────────────────────────┐ │
+ * │ • Note A │ │ <textarea>              │ │
+ * │   Note B │ │ plain markdown          │ │
+ * │   Note C │ │                         │ │
+ * │          │ └─────────────────────────┘ │
+ * │          │                  Saved ✓    │
+ * └──────────┴─────────────────────────────┘
+ */
+
+.notes-panel {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────────── */
+
+.notes-sidebar {
+  width: 200px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.notes-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.notes-new-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 200ms ease;
+  line-height: 1;
+}
+
+.notes-new-btn:hover {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
+/* ─── Note List ───────────────────────────────────────────────────── */
+
+.notes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.notes-list-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+}
+
+.notes-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  user-select: none;
+}
+
+.notes-list-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.notes-list-item-active {
+  background: var(--color-surface-active);
+  box-shadow: inset 0 0 0 1px rgba(79, 140, 255, 0.15);
+}
+
+.notes-list-item-active:hover {
+  background: var(--color-surface-active);
+}
+
+.notes-list-item-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.notes-list-item-time {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
+.notes-list-edit-input {
+  width: 100%;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--color-surface-active);
+  border: 1px solid var(--color-border-hover);
+  color: var(--color-text);
+  outline: none;
+}
+
+.notes-list-edit-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px rgba(79, 140, 255, 0.2);
+}
+
+/* ─── Divider ─────────────────────────────────────────────────────── */
+
+.notes-divider {
+  width: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+/* ─── Editor Pane ─────────────────────────────────────────────────── */
+
+.notes-editor-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.notes-error {
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+/* ─── Editor ──────────────────────────────────────────────────────── */
+
+.notes-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notes-editor-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.notes-editor-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background 150ms ease;
+}
+
+.notes-editor-title:hover {
+  background: var(--color-surface-hover);
+}
+
+.notes-editor-title-input {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--color-surface-active);
+  border: 1px solid var(--color-border-hover);
+  color: var(--color-text);
+  outline: none;
+}
+
+.notes-editor-title-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px rgba(79, 140, 255, 0.2);
+}
+
+.notes-editor-textarea {
+  flex: 1;
+  resize: none;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  outline: none;
+  overflow-y: auto;
+  tab-size: 2;
+}
+
+.notes-editor-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ─── Save Status ─────────────────────────────────────────────────── */
+
+.notes-status {
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 300ms ease, opacity 300ms ease;
+}
+
+.notes-status-saving {
+  color: var(--color-text-muted);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.notes-status-saved {
+  color: hsl(150, 60%, 50%);
+  opacity: 0.7;
+}
+
+/* ─── Empty State ─────────────────────────────────────────────────── */
+
+.notes-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+
+.notes-empty-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  animation: float 3s ease-in-out infinite;
+}
+

@@ -14,12 +14,16 @@
  * Possible states for a window.
  * Even though only Normal and Minimized are implemented in Sprint 1D,
  * Maximized is reserved to avoid a breaking change later.
+ *
+ * Uses const object + type union instead of enum to satisfy erasableSyntaxOnly.
  */
-export enum WindowState {
-  Normal = 'normal',
-  Minimized = 'minimized',
-  Maximized = 'maximized',
-}
+export const WindowState = {
+  Normal: 'normal',
+  Minimized: 'minimized',
+  Maximized: 'maximized',
+} as const;
+
+export type WindowState = (typeof WindowState)[keyof typeof WindowState];
 
 // ─── Window Instance ─────────────────────────────────────────────────
 

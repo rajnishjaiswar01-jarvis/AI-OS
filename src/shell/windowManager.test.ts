@@ -588,7 +588,7 @@ describe('Edge Cases', () => {
 
   it('should not make a minimized window active when focused', () => {
     const a = windowManager.open('test-app')!;
-    const b = windowManager.open('test-app')!;
+    windowManager.open('test-app');
 
     windowManager.minimize(a);
 
