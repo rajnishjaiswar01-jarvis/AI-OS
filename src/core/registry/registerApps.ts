@@ -17,6 +17,7 @@ const ProjectsPanel = lazy(() => import('@features/projects/components/ProjectsP
 const Chat = lazy(() => import('@ai/chat/components/Chat'));
 const SettingsPanel = lazy(() => import('@features/settings/components/SettingsPanel'));
 const NotesPanel = lazy(() => import('@features/notes/components/NotesPanel'));
+const TasksPanel = lazy(() => import('@features/tasks/components/TasksPanel'));
 
 // ─── Registration ────────────────────────────────────────────────────
 
@@ -44,6 +45,15 @@ export function registerBuiltinApps(): void {
     name: 'Notes',
     icon: '📝',
     component: NotesPanel,
+    singleton: true,
+    defaultSize: { width: 680, height: 520 },
+  });
+
+  registerApp({
+    id: 'tasks',
+    name: 'Tasks',
+    icon: '✅',
+    component: TasksPanel,
     singleton: true,
     defaultSize: { width: 680, height: 520 },
   });

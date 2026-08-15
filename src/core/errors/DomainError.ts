@@ -13,6 +13,7 @@
 export type DomainErrorCode =
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
+  | 'DELETED_ENTITY'
   | 'DUPLICATE_NAME'
   | 'OPERATION_FAILED'
   | 'STORAGE_FULL';

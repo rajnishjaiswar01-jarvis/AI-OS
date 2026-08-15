@@ -39,7 +39,7 @@ describe('AiOSDatabase', () => {
     expect(db.isOpen()).toBe(true);
   });
 
-  it('has all four tables', async () => {
+  it('has all five tables', async () => {
     const db = createTestDb();
     await db.open();
 
@@ -48,6 +48,7 @@ describe('AiOSDatabase', () => {
       'notes',
       'projects',
       'settings',
+      'tasks',
     ]);
   });
 
@@ -160,4 +161,65 @@ describe('AiOSDatabase', () => {
       expect(recentProjects).toHaveLength(2);
     });
   });
+
+  // ── Migration Regression (v2 → v3) ────────────────────────────────
+
+  describe('migration v2 → v3', () => {
+    it('should preserve existing project and note data after v3 upgrade', async () => {
+      const db = createTestDb();
+      await db.open();
+
+      // Seed data that existed before v3 (projects + notes from v1/v2)
+      const now = new Date().toISOString();
+      await db.projects.add({
+        id: 'migration-proj-1',
+        name: 'Migration Test Project',
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await db.notes.add({
+        id: 'migration-note-1',
+        projectId: 'migration-proj-1',
+        title: 'Migration Test Note',
+        content: 'This content must survive the upgrade.',
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // Verify project survived
+      const project = await db.projects.get('migration-proj-1');
+      expect(project).toBeDefined();
+      expect(project!.name).toBe('Migration Test Project');
+
+      // Verify note survived with full content
+      const note = await db.notes.get('migration-note-1');
+      expect(note).toBeDefined();
+      expect(note!.title).toBe('Migration Test Note');
+      expect(note!.content).toBe('This content must survive the upgrade.');
+      expect(note!.projectId).toBe('migration-proj-1');
+
+      // Verify tasks table exists and is empty
+      const taskCount = await db.tasks.count();
+      expect(taskCount).toBe(0);
+
+      // Verify we can write to the new tasks table
+      await db.tasks.add({
+        id: 'migration-task-1',
+        projectId: 'migration-proj-1',
+        title: 'First Task',
+        description: '',
+        status: 'todo',
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const task = await db.tasks.get('migration-task-1');
+      expect(task).toBeDefined();
+      expect(task!.title).toBe('First Task');
+    });
+  });
 });
+
