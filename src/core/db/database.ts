@@ -2,16 +2,15 @@
  * AI OS — Database (Dexie)
  *
  * IndexedDB-backed persistent storage using Dexie.
- * Schema version 3: projects, settings, memory, notes, tasks.
+ * Schema version 4: projects, settings, memory, notes, tasks, files.
  *
  * Schema versioning is built-in from day one via Dexie's .version() system.
- * Future sprints will add tables (files) without breaking
- * existing data.
+ * Each sprint adds tables without breaking existing data.
  */
 
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { Project, Setting, MemoryEntry, Note, Task } from './types';
+import type { Project, Setting, MemoryEntry, Note, Task, FileEntry } from './types';
 
 // ─── Database Class ──────────────────────────────────────────────────
 
@@ -21,6 +20,7 @@ export class AiOSDatabase extends Dexie {
   memory!: Table<MemoryEntry, number>;
   notes!: Table<Note, string>;
   tasks!: Table<Task, string>;
+  files!: Table<FileEntry, string>;
 
   constructor(name = 'ai-os-db') {
     super(name);
@@ -47,6 +47,16 @@ export class AiOSDatabase extends Dexie {
       memory: '++id, category, createdAt',
       notes: 'id, projectId, title, isDeleted, createdAt, updatedAt',
       tasks: 'id, projectId, status, isDeleted, createdAt, updatedAt',
+    });
+
+    // Schema version 4 — Files (Sprint 4)
+    this.version(4).stores({
+      projects: 'id, name, createdAt, updatedAt',
+      settings: 'key',
+      memory: '++id, category, createdAt',
+      notes: 'id, projectId, title, isDeleted, createdAt, updatedAt',
+      tasks: 'id, projectId, status, isDeleted, createdAt, updatedAt',
+      files: 'id, projectId, parentId, type, isDeleted, createdAt, updatedAt',
     });
   }
 }

@@ -39,11 +39,12 @@ describe('AiOSDatabase', () => {
     expect(db.isOpen()).toBe(true);
   });
 
-  it('has all five tables', async () => {
+  it('has all six tables', async () => {
     const db = createTestDb();
     await db.open();
 
     expect(db.tables.map((t) => t.name).sort()).toEqual([
+      'files',
       'memory',
       'notes',
       'projects',

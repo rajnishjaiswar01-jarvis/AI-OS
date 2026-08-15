@@ -5,6 +5,7 @@
  * Schema version 1: projects, settings, memory.
  * Schema version 2: notes.
  * Schema version 3: tasks.
+ * Schema version 4: files.
  */
 
 // ─── Project ─────────────────────────────────────────────────────────
@@ -90,6 +91,48 @@ export interface Task {
   description: string;
   /** Current lifecycle status */
   status: TaskStatus;
+  /** Soft delete flag — hidden from UI but recoverable */
+  isDeleted: boolean;
+  /** ISO 8601 creation timestamp */
+  createdAt: string;
+  /** ISO 8601 last-modified timestamp */
+  updatedAt: string;
+}
+
+// ─── FileEntry ───────────────────────────────────────────────────────
+
+/**
+ * File entry type discriminator.
+ *
+ * Uses const object + type union (not enum) to satisfy erasableSyntaxOnly.
+ *
+ * @see ADR-010 — Single-Level Folder Hierarchy
+ */
+export const FileEntryType = {
+  File: 'file',
+  Folder: 'folder',
+} as const;
+
+export type FileEntryType = (typeof FileEntryType)[keyof typeof FileEntryType];
+
+export interface FileEntry {
+  /** Primary key (UUID v4) */
+  id: string;
+  /** Foreign key to Project — files are always project-scoped */
+  projectId: string;
+  /**
+   * Parent folder ID. null = project root.
+   * If non-null, must reference a root-level folder (parentId constraint: depth ≤ 1).
+   *
+   * @see ADR-010 Invariant #1, #5
+   */
+  parentId: string | null;
+  /** Display name (e.g., "report.md"). Must not contain / or \\ */
+  name: string;
+  /** Discriminator: "file" or "folder" */
+  type: FileEntryType;
+  /** Text content. Always "" for folders (ADR-010 Invariant #2) */
+  content: string;
   /** Soft delete flag — hidden from UI but recoverable */
   isDeleted: boolean;
   /** ISO 8601 creation timestamp */
