@@ -16,7 +16,7 @@ AI OS is a browser-based desktop environment designed as the foundation for an A
 - 🚀 **Boot Screen** — Cinematic startup animation with phase indicators
 
 ### AI Integration
-- 💬 **AI Chat** — Conversational AI powered by Google Gemini with markdown rendering
+- 💬 **AI Chat** — Conversational AI powered by GPT Astra (Experiential Labs) with markdown rendering
 - ✦ **AI Orb** — Ambient presence indicator with state-driven animations (ready, thinking, error)
 - 📝 **Markdown Rendering** — Syntax-highlighted code blocks with copy support
 
@@ -33,7 +33,7 @@ AI OS is a browser-based desktop environment designed as the foundation for an A
 | **Build** | Vite 8 |
 | **State** | Zustand 5 |
 | **Persistence** | Dexie.js (IndexedDB) |
-| **AI** | Google Gemini API |
+| **AI** | Experiential Labs (GPT Astra) |
 | **Styling** | Tailwind CSS 4 + CSS custom properties |
 | **Testing** | Vitest + fake-indexeddb |
 | **Linting** | oxlint |
@@ -134,7 +134,7 @@ npm run test:ui       # Interactive UI
 Glass-morphism desktop, dock, top bar, theme engine, boot screen, wallpapers
 
 ### v0.2 — AI Core ✅
-Gemini integration, markdown rendering, AI Orb, error handling, token tracking
+AI integration (GPT Astra via Experiential Labs), markdown rendering, AI Orb, error handling, token tracking
 
 ### v0.3 — Workspace Foundation 🔄
 - **Sprint 0:** Dexie persistence, project CRUD ✅

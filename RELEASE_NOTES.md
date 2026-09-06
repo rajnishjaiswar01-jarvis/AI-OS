@@ -1,7 +1,7 @@
 # AI OS v0.2.0 — AI Core
 
 ## Added
-- Gemini AI integration
+- AI integration (GPT Astra via Experiential Labs)
 - Session conversation memory
 - Markdown rendering
 - Syntax highlighted code blocks
@@ -25,6 +25,6 @@
 - React 19
 - TypeScript
 - Zustand
-- Google Gemini API
+- Experiential Labs API (GPT Astra)
 - Tailwind CSS
 - Vite

@@ -2,7 +2,7 @@
  * AI OS — AI Provider Interface
  *
  * Provider-agnostic abstraction for AI interactions.
- * All AI providers (Gemini, OpenAI, local models) implement this interface.
+ * All AI providers (Experiential Labs, OpenAI, local models) implement this interface.
  *
  * The rest of the application communicates through this contract,
  * never directly with any AI SDK.
@@ -44,18 +44,18 @@ export interface GenerateOptions {
  *
  * @example
  * ```ts
- * class GeminiProvider implements AiProvider {
- *   readonly id = 'gemini';
- *   readonly name = 'Google Gemini';
+ * class AstraProvider implements AiProvider {
+ *   readonly id = 'astra';
+ *   readonly name = 'GPT Astra';
  *   // ...
  * }
  * ```
  */
 export interface AiProvider {
-  /** Unique identifier for this provider (e.g., 'gemini', 'openai', 'local') */
+  /** Unique identifier for this provider (e.g., 'astra', 'openai', 'local') */
   readonly id: string;
 
-  /** Human-readable display name (e.g., 'Google Gemini') */
+  /** Human-readable display name (e.g., 'GPT Astra') */
   readonly name: string;
 
   /** Generate a response from conversation history */

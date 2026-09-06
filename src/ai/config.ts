@@ -2,20 +2,22 @@
  * AI OS — AI Configuration
  *
  * Reads environment variables and exports validated configuration
- * for the AI service layer. All Gemini-specific details are
+ * for the AI service layer. All provider-specific details are
  * contained here and in aiService.ts.
  *
  * ⚠️ TEMPORARY ARCHITECTURE:
- * API key is currently used client-side. This will be migrated to
- * a secure backend/serverless proxy (Vercel Serverless Functions)
- * in a future version.
+ * API key is currently used client-side via VITE_* env vars,
+ * which means it is embedded in the browser bundle.
+ * This will be migrated to a secure backend/serverless proxy
+ * in a future version. This is documented technical debt.
  */
 
-// ─── Gemini Configuration ────────────────────────────────────────────
+// ─── AI Configuration ───────────────────────────────────────────────
 
 export const AI_CONFIG = {
-  apiKey: import.meta.env.VITE_GEMINI_API_KEY as string | undefined,
-  model: (import.meta.env.VITE_GEMINI_MODEL as string | undefined) ?? 'gemini-2.5-flash',
+  apiKey: import.meta.env.VITE_AI_API_KEY as string | undefined,
+  baseUrl: (import.meta.env.VITE_AI_BASE_URL as string | undefined) ?? 'https://api.experientiallabs.ai/v1',
+  model: (import.meta.env.VITE_AI_MODEL as string | undefined) ?? 'gpt-6-astra',
 } as const;
 
 // ─── Default System Prompt ───────────────────────────────────────────
@@ -25,7 +27,7 @@ export const DEFAULT_SYSTEM_PROMPT = `You are the built-in AI assistant of AI OS
 # Identity
 
 - You are an integrated part of AI OS, not an external chatbot.
-- Never describe yourself as Gemini, Google AI, or any underlying model unless the user explicitly asks.
+- Never describe yourself as any underlying model, provider, or company name unless the user explicitly asks.
 - Never expose implementation details, SDK names, or provider information.
 - Never repeatedly introduce yourself. Just be helpful.
 - If asked who you are, say you are the AI core of AI OS.
@@ -95,16 +97,15 @@ export function isAiConfigured(): boolean {
 export function validateAiConfig(): void {
   if (!AI_CONFIG.apiKey?.trim()) {
     throw new Error(
-      'Gemini API key is not configured. ' +
-      'Add VITE_GEMINI_API_KEY to your .env file. ' +
-      'Get a key at https://aistudio.google.com/apikey'
+      'AI API key is not configured. ' +
+      'Add VITE_AI_API_KEY to your .env file.'
     );
   }
 
   if (!AI_CONFIG.model?.trim()) {
     throw new Error(
       'AI model is not configured. ' +
-      'Add VITE_GEMINI_MODEL to your .env file (e.g., gemini-2.5-flash).'
+      'Add VITE_AI_MODEL to your .env file (e.g., gpt-6-astra).'
     );
   }
 }

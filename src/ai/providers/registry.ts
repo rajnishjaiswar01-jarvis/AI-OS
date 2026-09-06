@@ -5,7 +5,7 @@
  * and default provider selection.
  *
  * Sprint 0B bootstraps this with a dummy provider.
- * Gemini adapter registration happens in Sprint 1+.
+ * Provider adapter registration happens via registerProvider().
  */
 
 import type { AiProvider } from './types';

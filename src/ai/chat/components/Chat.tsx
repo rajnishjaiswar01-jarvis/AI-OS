@@ -1,7 +1,7 @@
 /**
  * AI OS — Chat App
  *
- * Full AI chat with real LLM responses via Gemini.
+ * Full AI chat with real LLM responses via AI service.
  * Orchestration lives here (not in the store):
  *   Chat.tsx → aiService.generateResponse() → chatStore (state mutations)
  */
@@ -119,7 +119,7 @@ function WelcomeScreen() {
           <div className="glass rounded-xl p-3 text-xs text-yellow-400/90 border border-yellow-400/20">
             <span className="font-medium">⚠ Not configured</span>
             <p className="mt-1 text-[var(--color-text-muted)]">
-              Add your Gemini API key to <code className="px-1 py-0.5 rounded bg-white/10 font-mono text-[10px]">.env</code> to get started.
+              Add your AI API key to <code className="px-1 py-0.5 rounded bg-white/10 font-mono text-[10px]">.env</code> to get started.
             </p>
           </div>
         )}

@@ -4,15 +4,15 @@
  * Reusable service for all AI interactions. Every feature (Chat, Voice,
  * File Analysis, Code Generation, Automation) calls generateResponse().
  *
- * All Gemini implementation details are hidden behind this module.
- * The rest of the application never communicates directly with Gemini.
+ * All provider implementation details are hidden behind this module.
+ * The rest of the application never communicates directly with the AI API.
  *
  * ⚠️ TEMPORARY ARCHITECTURE:
- * Currently calls Gemini directly from the browser. Will be migrated
- * to a secure backend/serverless proxy in a future version.
+ * Currently calls the AI API directly from the browser using VITE_*
+ * env vars (exposed in the client bundle). Will be migrated to a
+ * secure backend/serverless proxy in a future version.
  */
 
-import { GoogleGenAI } from '@google/genai';
 import { AI_CONFIG, DEFAULT_SYSTEM_PROMPT, validateAiConfig } from '@ai/config';
 
 // ─── Public Types ────────────────────────────────────────────────────
@@ -56,15 +56,34 @@ export class AiServiceError extends Error {
   }
 }
 
-// ─── Gemini Client (lazy singleton) ──────────────────────────────────
+// ─── OpenAI-compatible API Types ─────────────────────────────────────
 
-let _client: GoogleGenAI | null = null;
+interface OpenAiMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
 
-function getClient(): GoogleGenAI {
-  if (!_client) {
-    _client = new GoogleGenAI({ apiKey: AI_CONFIG.apiKey! });
-  }
-  return _client;
+interface OpenAiRequestBody {
+  model: string;
+  messages: OpenAiMessage[];
+}
+
+interface OpenAiChoice {
+  message: {
+    role: string;
+    content: string;
+  };
+}
+
+interface OpenAiUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+interface OpenAiResponse {
+  choices: OpenAiChoice[];
+  usage?: OpenAiUsage;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────
@@ -106,46 +125,45 @@ export async function generateResponse(
 
   const systemPrompt = options.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
 
-  // Convert conversation history to Gemini Content format
-  // Filter out system messages (handled via systemInstruction)
-  // Gemini uses 'user' and 'model' roles (not 'assistant')
-  const geminiContents = messages
-    .filter((msg) => msg.role !== 'system')
-    .map((msg) => ({
-      role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
-      parts: [{ text: msg.content }],
-    }));
+  // Build OpenAI-compatible messages array
+  // System prompt goes as the first message with role 'system'
+  const openAiMessages: OpenAiMessage[] = [
+    { role: 'system', content: systemPrompt },
+    ...messages
+      .filter((msg) => msg.role !== 'system')
+      .map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      })),
+  ];
 
-  // Set up abort handling
-  const abortPromise = options.signal
-    ? new Promise<never>((_, reject) => {
-        const onAbort = () => {
-          reject(new AiServiceError('Request was cancelled.', 'CANCELLED'));
-        };
-        options.signal!.addEventListener('abort', onAbort, { once: true });
-      })
-    : null;
+  const requestBody: OpenAiRequestBody = {
+    model: AI_CONFIG.model!,
+    messages: openAiMessages,
+  };
+
+  const url = `${AI_CONFIG.baseUrl}/chat/completions`;
 
   try {
-    const client = getClient();
-
-
-
-    const requestPromise = client.models.generateContent({
-      model: AI_CONFIG.model!,
-      contents: geminiContents,
-      config: {
-        systemInstruction: systemPrompt,
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AI_CONFIG.apiKey}`,
       },
+      body: JSON.stringify(requestBody),
+      signal: options.signal,
     });
 
-    // Race between the API call and abort signal
-    const response = abortPromise
-      ? await Promise.race([requestPromise, abortPromise])
-      : await requestPromise;
+    // Handle HTTP errors
+    if (!response.ok) {
+      handleHttpError(response.status);
+    }
+
+    const data: OpenAiResponse = await response.json();
 
     // Extract content
-    const content = response.text?.trim();
+    const content = data.choices?.[0]?.message?.content?.trim();
 
     if (!content) {
       throw new AiServiceError(
@@ -156,11 +174,10 @@ export async function generateResponse(
     }
 
     // Extract usage (default to 0 if not provided)
-    const usageMetadata = response.usageMetadata;
     const usage: AiUsage = {
-      inputTokens: usageMetadata?.promptTokenCount ?? 0,
-      outputTokens: usageMetadata?.candidatesTokenCount ?? 0,
-      totalTokens: usageMetadata?.totalTokenCount ?? 0,
+      inputTokens: data.usage?.prompt_tokens ?? 0,
+      outputTokens: data.usage?.completion_tokens ?? 0,
+      totalTokens: data.usage?.total_tokens ?? 0,
     };
 
     return { content, usage };
@@ -170,7 +187,12 @@ export async function generateResponse(
       throw error;
     }
 
-    // Handle specific Gemini API errors
+    // Handle abort
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new AiServiceError('Request was cancelled.', 'CANCELLED');
+    }
+
+    // Handle specific API errors
     const err = error as Error & { status?: number; message?: string };
 
     // Network errors
@@ -182,18 +204,12 @@ export async function generateResponse(
       );
     }
 
-    // Map HTTP status codes from Gemini error responses
-    const status = err.status;
-    if (status) {
-      handleHttpError(status);
-    }
-
     // Check error message for common patterns
     const message = err.message?.toLowerCase() ?? '';
 
     if (message.includes('api key') || message.includes('unauthorized') || message.includes('permission')) {
       throw new AiServiceError(
-        'Invalid API key. Please check your VITE_GEMINI_API_KEY in .env.',
+        'Invalid API key. Please check your VITE_AI_API_KEY in .env.',
         'AUTH_ERROR',
       );
     }
@@ -228,7 +244,7 @@ function handleHttpError(status: number): never {
     case 401:
     case 403:
       throw new AiServiceError(
-        'Invalid API key. Please check your VITE_GEMINI_API_KEY in .env.',
+        'Invalid API key. Please check your VITE_AI_API_KEY in .env.',
         'AUTH_ERROR',
       );
 
