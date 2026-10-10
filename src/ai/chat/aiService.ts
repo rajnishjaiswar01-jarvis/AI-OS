@@ -7,10 +7,9 @@
  * All provider implementation details are hidden behind this module.
  * The rest of the application never communicates directly with the AI API.
  *
- * ⚠️ TEMPORARY ARCHITECTURE:
- * Currently calls the AI API directly from the browser using VITE_*
- * env vars (exposed in the client bundle). Will be migrated to a
- * secure backend/serverless proxy in a future version.
+ * Architecture: The client sends messages to /api/ai/chat (our own server
+ * proxy). The server holds the API key, calls Gemini, and returns the
+ * response. No API key or external URL ever reaches the browser.
  */
 
 import { AI_CONFIG, DEFAULT_SYSTEM_PROMPT, validateAiConfig } from '@ai/config';
@@ -56,36 +55,6 @@ export class AiServiceError extends Error {
   }
 }
 
-// ─── OpenAI-compatible API Types ─────────────────────────────────────
-
-interface OpenAiMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface OpenAiRequestBody {
-  model: string;
-  messages: OpenAiMessage[];
-}
-
-interface OpenAiChoice {
-  message: {
-    role: string;
-    content: string;
-  };
-}
-
-interface OpenAiUsage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-}
-
-interface OpenAiResponse {
-  choices: OpenAiChoice[];
-  usage?: OpenAiUsage;
-}
-
 // ─── Public API ──────────────────────────────────────────────────────
 
 /**
@@ -125,45 +94,40 @@ export async function generateResponse(
 
   const systemPrompt = options.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
 
-  // Build OpenAI-compatible messages array
-  // System prompt goes as the first message with role 'system'
-  const openAiMessages: OpenAiMessage[] = [
-    { role: 'system', content: systemPrompt },
-    ...messages
+  // Build request body for our server proxy
+  // Only send user/assistant messages — the server prepends the system prompt
+  const requestBody = {
+    messages: messages
       .filter((msg) => msg.role !== 'system')
       .map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
+        role: msg.role,
         content: msg.content,
       })),
-  ];
-
-  const requestBody: OpenAiRequestBody = {
-    model: AI_CONFIG.model!,
-    messages: openAiMessages,
+    systemPrompt,
   };
 
-  const url = `${AI_CONFIG.baseUrl}/chat/completions`;
-
   try {
-    const response = await fetch(url, {
+    const response = await fetch(AI_CONFIG.endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AI_CONFIG.apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
       signal: options.signal,
     });
 
-    // Handle HTTP errors
+    // Parse the response body
+    const data = await response.json();
+
+    // Server returns { error, code, retryable? } on failure
     if (!response.ok) {
-      handleHttpError(response.status);
+      throw new AiServiceError(
+        data.error ?? 'Something went wrong.',
+        data.code ?? 'API_ERROR',
+        data.retryable ?? false,
+      );
     }
 
-    const data: OpenAiResponse = await response.json();
-
-    // Extract content
-    const content = data.choices?.[0]?.message?.content?.trim();
+    // Server returns { content, usage } on success
+    const content = data.content;
 
     if (!content) {
       throw new AiServiceError(
@@ -173,11 +137,10 @@ export async function generateResponse(
       );
     }
 
-    // Extract usage (default to 0 if not provided)
     const usage: AiUsage = {
-      inputTokens: data.usage?.prompt_tokens ?? 0,
-      outputTokens: data.usage?.completion_tokens ?? 0,
-      totalTokens: data.usage?.total_tokens ?? 0,
+      inputTokens: data.usage?.inputTokens ?? 0,
+      outputTokens: data.usage?.outputTokens ?? 0,
+      totalTokens: data.usage?.totalTokens ?? 0,
     };
 
     return { content, usage };
@@ -192,32 +155,12 @@ export async function generateResponse(
       throw new AiServiceError('Request was cancelled.', 'CANCELLED');
     }
 
-    // Handle specific API errors
-    const err = error as Error & { status?: number; message?: string };
-
-    // Network errors
+    // Network errors (can't reach our own /api/ai/chat)
+    const err = error as Error & { message?: string };
     if (err.name === 'TypeError' && err.message?.includes('fetch')) {
       throw new AiServiceError(
         'Unable to connect. Please check your internet connection and try again.',
         'NETWORK_ERROR',
-        true,
-      );
-    }
-
-    // Check error message for common patterns
-    const message = err.message?.toLowerCase() ?? '';
-
-    if (message.includes('api key') || message.includes('unauthorized') || message.includes('permission')) {
-      throw new AiServiceError(
-        'Invalid API key. Please check your VITE_AI_API_KEY in .env.',
-        'AUTH_ERROR',
-      );
-    }
-
-    if (message.includes('rate limit') || message.includes('quota')) {
-      throw new AiServiceError(
-        'Rate limit reached. Please wait a moment and try again.',
-        'RATE_LIMIT',
         true,
       );
     }
@@ -228,47 +171,5 @@ export async function generateResponse(
       'API_ERROR',
       true,
     );
-  }
-}
-
-// ─── Internal Helpers ────────────────────────────────────────────────
-
-function handleHttpError(status: number): never {
-  switch (status) {
-    case 400:
-      throw new AiServiceError(
-        'Invalid request. Please try rephrasing your message.',
-        'API_ERROR',
-      );
-
-    case 401:
-    case 403:
-      throw new AiServiceError(
-        'Invalid API key. Please check your VITE_AI_API_KEY in .env.',
-        'AUTH_ERROR',
-      );
-
-    case 429:
-      throw new AiServiceError(
-        'Rate limit reached. Please wait a moment and try again.',
-        'RATE_LIMIT',
-        true,
-      );
-
-    case 500:
-    case 502:
-    case 503:
-      throw new AiServiceError(
-        'The AI service is temporarily unavailable. Please try again shortly.',
-        'API_ERROR',
-        true,
-      );
-
-    default:
-      throw new AiServiceError(
-        `Request failed (${status}). Please try again.`,
-        'API_ERROR',
-        true,
-      );
   }
 }

@@ -1,23 +1,18 @@
 /**
  * AI OS — AI Configuration
  *
- * Reads environment variables and exports validated configuration
- * for the AI service layer. All provider-specific details are
- * contained here and in aiService.ts.
+ * Client-side configuration for the AI service layer.
  *
- * ⚠️ TEMPORARY ARCHITECTURE:
- * API key is currently used client-side via VITE_* env vars,
- * which means it is embedded in the browser bundle.
- * This will be migrated to a secure backend/serverless proxy
- * in a future version. This is documented technical debt.
+ * The API key and model selection are server-side only
+ * (see api/ai/chat.ts). The client communicates exclusively
+ * through the /api/ai/chat proxy endpoint.
  */
 
 // ─── AI Configuration ───────────────────────────────────────────────
 
 export const AI_CONFIG = {
-  apiKey: import.meta.env.VITE_AI_API_KEY as string | undefined,
-  baseUrl: (import.meta.env.VITE_AI_BASE_URL as string | undefined) ?? 'https://api.experientiallabs.ai/v1',
-  model: (import.meta.env.VITE_AI_MODEL as string | undefined) ?? 'gpt-6-astra',
+  /** Server proxy endpoint for AI chat. API key is server-side only. */
+  endpoint: '/api/ai/chat',
 } as const;
 
 // ─── Default System Prompt ───────────────────────────────────────────
@@ -83,29 +78,19 @@ The user should always feel they are talking to the native AI of their operating
 // ─── Validation ──────────────────────────────────────────────────────
 
 /**
- * Returns true if the AI configuration has both an API key and model set.
- * Use this for graceful UI degradation (e.g., showing "Not Configured").
+ * Returns true if the AI configuration is ready.
+ * Server handles API key validation; client always reports configured.
+ * Errors surface at request time if the server is misconfigured.
  */
 export function isAiConfigured(): boolean {
-  return Boolean(AI_CONFIG.apiKey?.trim() && AI_CONFIG.model?.trim());
+  return true;
 }
 
 /**
- * Validates the AI configuration and throws descriptive errors if
- * required values are missing. Call this before making API requests.
+ * Validates the AI configuration. No-op in the current architecture
+ * because the server validates the API key and model.
+ * Preserved for interface compatibility with existing callers.
  */
 export function validateAiConfig(): void {
-  if (!AI_CONFIG.apiKey?.trim()) {
-    throw new Error(
-      'AI API key is not configured. ' +
-      'Add VITE_AI_API_KEY to your .env file.'
-    );
-  }
-
-  if (!AI_CONFIG.model?.trim()) {
-    throw new Error(
-      'AI model is not configured. ' +
-      'Add VITE_AI_MODEL to your .env file (e.g., gpt-6-astra).'
-    );
-  }
+  // Server-side validation handles API key and model checks.
 }

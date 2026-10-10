@@ -1,8 +1,9 @@
 /**
  * AI OS — AI Service Tests
  *
- * Tests for the migrated AI service using OpenAI-compatible API
- * via Experiential Labs (GPT Astra). All API calls are mocked.
+ * Tests for the AI service using the server proxy architecture.
+ * The client calls /api/ai/chat — no API key or external URL in the bundle.
+ * All fetch calls to the proxy endpoint are mocked.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -11,12 +12,10 @@ import type { AiMessage } from './aiService';
 
 // ─── Mock Configuration ──────────────────────────────────────────────
 
-// Mock the config module so we control API key/model/baseUrl
+// Mock the config module — client only knows the proxy endpoint
 vi.mock('@ai/config', () => ({
   AI_CONFIG: {
-    apiKey: 'test-api-key-12345',
-    baseUrl: 'https://api.experientiallabs.ai/v1',
-    model: 'gpt-6-astra',
+    endpoint: '/api/ai/chat',
   },
   DEFAULT_SYSTEM_PROMPT: 'You are a test AI assistant.',
   isAiConfigured: () => true,
@@ -25,9 +24,28 @@ vi.mock('@ai/config', () => ({
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-function mockFetchResponse(body: object, status = 200): void {
+/**
+ * Mock a successful fetch response from the server proxy.
+ * Server returns pre-processed { content, usage }.
+ */
+function mockProxySuccess(body: object, status = 200): void {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  }));
+}
+
+/**
+ * Mock an error response from the server proxy.
+ * Server returns { error, code, retryable? }.
+ */
+function mockProxyError(
+  status: number,
+  body: { error: string; code: string; retryable?: boolean },
+): void {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: false,
     status,
     json: () => Promise.resolve(body),
   }));
@@ -37,16 +55,19 @@ function mockFetchError(error: Error): void {
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error));
 }
 
-function makeOpenAiResponse(content: string, usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }) {
+function makeProxyResponse(
+  content: string,
+  usage?: { inputTokens: number; outputTokens: number; totalTokens: number },
+) {
   return {
-    choices: [{ message: { role: 'assistant', content } }],
-    usage: usage ?? { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    content,
+    usage: usage ?? { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
   };
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────
 
-describe('aiService (GPT Astra via Experiential Labs)', () => {
+describe('aiService (Gemini via server proxy)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -58,39 +79,51 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
   // ─── Request Construction ────────────────────────────────────────
 
   describe('request construction', () => {
-    it('sends request to the correct base URL', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
+    it('sends request to the /api/ai/chat proxy endpoint', async () => {
+      mockProxySuccess(makeProxyResponse('Hello!'));
 
       await generateResponse([{ role: 'user', content: 'Hi' }]);
 
       expect(fetch).toHaveBeenCalledWith(
-        'https://api.experientiallabs.ai/v1/chat/completions',
+        '/api/ai/chat',
         expect.any(Object),
       );
     });
 
-    it('sends the correct model in the request body', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
-
-      await generateResponse([{ role: 'user', content: 'Hi' }]);
-
-      const callArgs = vi.mocked(fetch).mock.calls[0];
-      const body = JSON.parse(callArgs[1]!.body as string);
-      expect(body.model).toBe('gpt-6-astra');
-    });
-
-    it('sends Bearer authorization header with the API key', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
+    it('does not send any authorization header', async () => {
+      mockProxySuccess(makeProxyResponse('Hello!'));
 
       await generateResponse([{ role: 'user', content: 'Hi' }]);
 
       const callArgs = vi.mocked(fetch).mock.calls[0];
       const headers = callArgs[1]!.headers as Record<string, string>;
-      expect(headers['Authorization']).toBe('Bearer test-api-key-12345');
+      expect(headers).not.toHaveProperty('Authorization');
+    });
+
+    it('does not include API key in request body', async () => {
+      mockProxySuccess(makeProxyResponse('Hello!'));
+
+      await generateResponse([{ role: 'user', content: 'Hi' }]);
+
+      const callArgs = vi.mocked(fetch).mock.calls[0];
+      const body = JSON.parse(callArgs[1]!.body as string);
+      expect(JSON.stringify(body)).not.toContain('api_key');
+      expect(JSON.stringify(body)).not.toContain('apiKey');
+      expect(JSON.stringify(body)).not.toContain('API_KEY');
+    });
+
+    it('does not include model in request body (server decides)', async () => {
+      mockProxySuccess(makeProxyResponse('Hello!'));
+
+      await generateResponse([{ role: 'user', content: 'Hi' }]);
+
+      const callArgs = vi.mocked(fetch).mock.calls[0];
+      const body = JSON.parse(callArgs[1]!.body as string);
+      expect(body).not.toHaveProperty('model');
     });
 
     it('sends Content-Type application/json', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
+      mockProxySuccess(makeProxyResponse('Hello!'));
 
       await generateResponse([{ role: 'user', content: 'Hi' }]);
 
@@ -100,7 +133,7 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
     });
 
     it('uses POST method', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
+      mockProxySuccess(makeProxyResponse('Hello!'));
 
       await generateResponse([{ role: 'user', content: 'Hi' }]);
 
@@ -108,45 +141,36 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
       expect(callArgs[1]!.method).toBe('POST');
     });
 
-    it('does not send Gemini-specific parameters', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
+    it('sends messages and systemPrompt in request body', async () => {
+      mockProxySuccess(makeProxyResponse('Hello!'));
 
       await generateResponse([{ role: 'user', content: 'Hi' }]);
 
       const callArgs = vi.mocked(fetch).mock.calls[0];
       const body = JSON.parse(callArgs[1]!.body as string);
 
-      // No Gemini-specific fields
-      expect(body).not.toHaveProperty('contents');
-      expect(body).not.toHaveProperty('config');
-      expect(body).not.toHaveProperty('systemInstruction');
-      expect(body).not.toHaveProperty('generationConfig');
-      expect(body).not.toHaveProperty('safetySettings');
-
-      // Only expected fields
-      expect(Object.keys(body)).toEqual(['model', 'messages']);
+      expect(body).toHaveProperty('messages');
+      expect(body).toHaveProperty('systemPrompt');
+      expect(Object.keys(body)).toEqual(['messages', 'systemPrompt']);
     });
   });
 
   // ─── System Prompt Handling ──────────────────────────────────────
 
   describe('system prompt handling', () => {
-    it('includes the default system prompt as the first message', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
+    it('includes the default system prompt in request body', async () => {
+      mockProxySuccess(makeProxyResponse('Hello!'));
 
       await generateResponse([{ role: 'user', content: 'Hi' }]);
 
       const callArgs = vi.mocked(fetch).mock.calls[0];
       const body = JSON.parse(callArgs[1]!.body as string);
 
-      expect(body.messages[0]).toEqual({
-        role: 'system',
-        content: 'You are a test AI assistant.',
-      });
+      expect(body.systemPrompt).toBe('You are a test AI assistant.');
     });
 
     it('uses a custom system prompt when provided', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
+      mockProxySuccess(makeProxyResponse('Hello!'));
 
       await generateResponse(
         [{ role: 'user', content: 'Hi' }],
@@ -156,18 +180,15 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
       const callArgs = vi.mocked(fetch).mock.calls[0];
       const body = JSON.parse(callArgs[1]!.body as string);
 
-      expect(body.messages[0]).toEqual({
-        role: 'system',
-        content: 'Custom system prompt',
-      });
+      expect(body.systemPrompt).toBe('Custom system prompt');
     });
   });
 
   // ─── Conversation History / Message Conversion ───────────────────
 
   describe('message conversion', () => {
-    it('converts conversation history to OpenAI message format', async () => {
-      mockFetchResponse(makeOpenAiResponse('Sure!'));
+    it('converts conversation history to message format', async () => {
+      mockProxySuccess(makeProxyResponse('Sure!'));
 
       const messages: AiMessage[] = [
         { role: 'user', content: 'Hello' },
@@ -180,33 +201,15 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
       const callArgs = vi.mocked(fetch).mock.calls[0];
       const body = JSON.parse(callArgs[1]!.body as string);
 
-      // System prompt first, then conversation
-      expect(body.messages).toHaveLength(4); // 1 system + 3 conversation
-      expect(body.messages[1]).toEqual({ role: 'user', content: 'Hello' });
-      expect(body.messages[2]).toEqual({ role: 'assistant', content: 'Hi there!' });
-      expect(body.messages[3]).toEqual({ role: 'user', content: 'Help me' });
-    });
-
-    it('uses "assistant" role (not "model" like Gemini)', async () => {
-      mockFetchResponse(makeOpenAiResponse('Response'));
-
-      const messages: AiMessage[] = [
-        { role: 'user', content: 'Q' },
-        { role: 'assistant', content: 'A' },
-      ];
-
-      await generateResponse(messages);
-
-      const callArgs = vi.mocked(fetch).mock.calls[0];
-      const body = JSON.parse(callArgs[1]!.body as string);
-
-      const roles = body.messages.map((m: { role: string }) => m.role);
-      expect(roles).not.toContain('model');
-      expect(roles).toContain('assistant');
+      // 3 conversation messages (no system — that's in systemPrompt field)
+      expect(body.messages).toHaveLength(3);
+      expect(body.messages[0]).toEqual({ role: 'user', content: 'Hello' });
+      expect(body.messages[1]).toEqual({ role: 'assistant', content: 'Hi there!' });
+      expect(body.messages[2]).toEqual({ role: 'user', content: 'Help me' });
     });
 
     it('filters out system messages from conversation history', async () => {
-      mockFetchResponse(makeOpenAiResponse('OK'));
+      mockProxySuccess(makeProxyResponse('OK'));
 
       const messages: AiMessage[] = [
         { role: 'system', content: 'This should be filtered' },
@@ -218,11 +221,9 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
       const callArgs = vi.mocked(fetch).mock.calls[0];
       const body = JSON.parse(callArgs[1]!.body as string);
 
-      // Only the default system prompt + user message
-      expect(body.messages).toHaveLength(2);
-      expect(body.messages[0].role).toBe('system');
-      expect(body.messages[0].content).toBe('You are a test AI assistant.');
-      expect(body.messages[1].role).toBe('user');
+      // Only the user message (system messages are filtered, systemPrompt field used instead)
+      expect(body.messages).toHaveLength(1);
+      expect(body.messages[0].role).toBe('user');
     });
   });
 
@@ -230,26 +231,18 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
 
   describe('response parsing', () => {
     it('returns the response content', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello from Astra!'));
+      mockProxySuccess(makeProxyResponse('Hello from Gemini!'));
 
       const result = await generateResponse([{ role: 'user', content: 'Hi' }]);
 
-      expect(result.content).toBe('Hello from Astra!');
+      expect(result.content).toBe('Hello from Gemini!');
     });
 
-    it('trims whitespace from response content', async () => {
-      mockFetchResponse(makeOpenAiResponse('  Hello!  '));
-
-      const result = await generateResponse([{ role: 'user', content: 'Hi' }]);
-
-      expect(result.content).toBe('Hello!');
-    });
-
-    it('parses token usage from the response', async () => {
-      mockFetchResponse(makeOpenAiResponse('OK', {
-        prompt_tokens: 50,
-        completion_tokens: 100,
-        total_tokens: 150,
+    it('parses token usage from the server response', async () => {
+      mockProxySuccess(makeProxyResponse('OK', {
+        inputTokens: 50,
+        outputTokens: 100,
+        totalTokens: 150,
       }));
 
       const result = await generateResponse([{ role: 'user', content: 'Hi' }]);
@@ -262,7 +255,7 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
     });
 
     it('defaults token usage to 0 when not provided', async () => {
-      mockFetchResponse({ choices: [{ message: { role: 'assistant', content: 'Hi' } }] });
+      mockProxySuccess({ content: 'Hi' });
 
       const result = await generateResponse([{ role: 'user', content: 'Hi' }]);
 
@@ -278,7 +271,7 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
 
   describe('empty response handling', () => {
     it('throws EMPTY_RESPONSE for empty content', async () => {
-      mockFetchResponse(makeOpenAiResponse(''));
+      mockProxySuccess({ content: '', usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } });
 
       await expect(
         generateResponse([{ role: 'user', content: 'Hi' }])
@@ -292,8 +285,8 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
       }
     });
 
-    it('throws EMPTY_RESPONSE when choices array is empty', async () => {
-      mockFetchResponse({ choices: [] });
+    it('throws EMPTY_RESPONSE when content is undefined', async () => {
+      mockProxySuccess({ usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } });
 
       await expect(
         generateResponse([{ role: 'user', content: 'Hi' }])
@@ -301,15 +294,14 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
     });
   });
 
-  // ─── HTTP Error Handling ─────────────────────────────────────────
+  // ─── Server Error Handling ──────────────────────────────────────
 
-  describe('HTTP error handling', () => {
-    it('throws AUTH_ERROR for 401', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: false,
-        status: 401,
-        json: () => Promise.resolve({ error: { message: 'Unauthorized' } }),
-      }));
+  describe('server error handling', () => {
+    it('throws AUTH_ERROR from server 401', async () => {
+      mockProxyError(401, {
+        error: 'AI authentication error.',
+        code: 'AUTH_ERROR',
+      });
 
       try {
         await generateResponse([{ role: 'user', content: 'Hi' }]);
@@ -320,27 +312,12 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
       }
     });
 
-    it('throws AUTH_ERROR for 403', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: false,
-        status: 403,
-        json: () => Promise.resolve({}),
-      }));
-
-      try {
-        await generateResponse([{ role: 'user', content: 'Hi' }]);
-        expect.unreachable('Should have thrown');
-      } catch (err) {
-        expect((err as AiServiceError).code).toBe('AUTH_ERROR');
-      }
-    });
-
-    it('throws RATE_LIMIT for 429', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: false,
-        status: 429,
-        json: () => Promise.resolve({}),
-      }));
+    it('throws RATE_LIMIT from server 429', async () => {
+      mockProxyError(429, {
+        error: 'Rate limit reached.',
+        code: 'RATE_LIMIT',
+        retryable: true,
+      });
 
       try {
         await generateResponse([{ role: 'user', content: 'Hi' }]);
@@ -351,12 +328,27 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
       }
     });
 
-    it('throws API_ERROR for 500', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({}),
-      }));
+    it('throws API_ERROR from server 500', async () => {
+      mockProxyError(500, {
+        error: 'Server configuration error.',
+        code: 'CONFIG_ERROR',
+      });
+
+      try {
+        await generateResponse([{ role: 'user', content: 'Hi' }]);
+        expect.unreachable('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(AiServiceError);
+        expect((err as AiServiceError).code).toBe('CONFIG_ERROR');
+      }
+    });
+
+    it('throws API_ERROR from server 502', async () => {
+      mockProxyError(502, {
+        error: 'AI service unavailable.',
+        code: 'API_ERROR',
+        retryable: true,
+      });
 
       try {
         await generateResponse([{ role: 'user', content: 'Hi' }]);
@@ -367,10 +359,10 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
       }
     });
 
-    it('throws API_ERROR for 400', async () => {
+    it('uses fallback error values when server response is incomplete', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: false,
-        status: 400,
+        status: 500,
         json: () => Promise.resolve({}),
       }));
 
@@ -378,7 +370,9 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
         await generateResponse([{ role: 'user', content: 'Hi' }]);
         expect.unreachable('Should have thrown');
       } catch (err) {
+        expect(err).toBeInstanceOf(AiServiceError);
         expect((err as AiServiceError).code).toBe('API_ERROR');
+        expect((err as AiServiceError).retryable).toBe(false);
       }
     });
   });
@@ -433,7 +427,7 @@ describe('aiService (GPT Astra via Experiential Labs)', () => {
     });
 
     it('passes the abort signal to fetch', async () => {
-      mockFetchResponse(makeOpenAiResponse('Hello!'));
+      mockProxySuccess(makeProxyResponse('Hello!'));
 
       const controller = new AbortController();
       await generateResponse(
