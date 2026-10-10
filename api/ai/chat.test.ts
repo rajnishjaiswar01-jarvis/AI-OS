@@ -12,7 +12,7 @@ import { processChatRequest } from './chat.js';
 
 const VALID_ENV = {
   GEMINI_API_KEY: 'test-server-key-xxx',
-  GEMINI_MODEL: 'gemini-3.8-flash',
+  GEMINI_MODEL: 'gemini-3.5-flash',
 };
 
 const VALID_BODY = {
@@ -83,7 +83,7 @@ describe('processChatRequest (Gemini API route)', () => {
     it('returns CONFIG_ERROR when GEMINI_API_KEY is missing', async () => {
       const result = await processChatRequest(VALID_BODY, {
         GEMINI_API_KEY: undefined,
-        GEMINI_MODEL: 'gemini-3.8-flash',
+        GEMINI_MODEL: 'gemini-3.5-flash',
       });
 
       expect(result.status).toBe(500);
@@ -93,7 +93,7 @@ describe('processChatRequest (Gemini API route)', () => {
     it('returns CONFIG_ERROR when GEMINI_API_KEY is empty string', async () => {
       const result = await processChatRequest(VALID_BODY, {
         GEMINI_API_KEY: '   ',
-        GEMINI_MODEL: 'gemini-3.8-flash',
+        GEMINI_MODEL: 'gemini-3.5-flash',
       });
 
       expect(result.status).toBe(500);
@@ -257,7 +257,7 @@ describe('processChatRequest (Gemini API route)', () => {
       expect(body.model).toBe('gemini-3.5-flash');
     });
 
-    it('defaults to gemini-3.8-flash when GEMINI_MODEL is not set', async () => {
+    it('defaults to gemini-3.5-flash when GEMINI_MODEL is not set', async () => {
       mockFetchSuccess(makeGeminiResponse('OK'));
 
       await processChatRequest(VALID_BODY, {
@@ -268,7 +268,7 @@ describe('processChatRequest (Gemini API route)', () => {
       const callArgs = vi.mocked(fetch).mock.calls[0];
       const body = JSON.parse(callArgs[1]!.body as string);
 
-      expect(body.model).toBe('gemini-3.8-flash');
+      expect(body.model).toBe('gemini-3.5-flash');
     });
   });
 
@@ -407,7 +407,7 @@ describe('processChatRequest (Gemini API route)', () => {
       mockFetchSuccess(makeGeminiResponse('Hello!'));
       const successResult = await processChatRequest(VALID_BODY, {
         GEMINI_API_KEY: testKey,
-        GEMINI_MODEL: 'gemini-3.8-flash',
+        GEMINI_MODEL: 'gemini-3.5-flash',
       });
       expect(JSON.stringify(successResult.body)).not.toContain(testKey);
 
@@ -415,7 +415,7 @@ describe('processChatRequest (Gemini API route)', () => {
       mockFetchHttpError(401);
       const errorResult = await processChatRequest(VALID_BODY, {
         GEMINI_API_KEY: testKey,
-        GEMINI_MODEL: 'gemini-3.8-flash',
+        GEMINI_MODEL: 'gemini-3.5-flash',
       });
       expect(JSON.stringify(errorResult.body)).not.toContain(testKey);
 

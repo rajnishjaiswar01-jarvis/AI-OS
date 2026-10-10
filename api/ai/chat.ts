@@ -16,7 +16,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
-const DEFAULT_MODEL = 'gemini-3.8-flash';
+const DEFAULT_MODEL = 'gemini-3.5-flash';
 
 /**
  * Default system prompt — duplicated from src/ai/config.ts so the
