@@ -130,6 +130,10 @@ html, body, #root {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
+[data-theme="light"] .window.glass {
+  background: rgba(255, 255, 255, 0.55);
+}
+
 /* ═══════════════════════════════════════════
    Animations
    ═══════════════════════════════════════════ */
@@ -419,11 +423,25 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: clip;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.3),
     0 2px 8px rgba(0, 0, 0, 0.2);
   transition: box-shadow 200ms ease;
+  /* Ensure each window composites its own backdrop independently */
+  isolation: isolate;
+}
+
+.window.glass {
+  /* Override the generic .glass background with a slightly more opaque
+     surface so the glass tint remains visible even when windows overlap.
+     backdrop-filter only blurs the immediate layer behind — when windows
+     stack, the back window's already-composited output looks opaque to
+     the front window's filter. A higher-alpha background preserves the
+     frosted-glass appearance regardless of stacking. */
+  background: rgba(15, 15, 35, 0.65);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
 }
 
 .window:hover {
