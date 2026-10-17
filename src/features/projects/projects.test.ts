@@ -11,14 +11,19 @@
  * - Delete active project → activeProjectId becomes null
  * - Load projects → hydrates from DB
  * - Active project persists across store reloads
+ * - Cascade delete → notes, tasks, files removed with project
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AiOSDatabase } from '@core/db/database';
 import { projectRepository } from './projectRepository';
+import { noteRepository } from '@features/notes/noteRepository';
+import { taskRepository } from '@features/tasks/taskRepository';
+import { fileRepository } from '@features/files/fileRepository';
 import { projectService } from './projectService';
 import { useProjectStore } from './projectStore';
 import { settingsRepository } from '@core/db/settingsRepository';
+import type { Note, Task, FileEntry } from '@core/db/types';
 
 // ─── Test Database Setup ─────────────────────────────────────────────
 
@@ -293,6 +298,184 @@ describe('Project Service', () => {
       // Double-check directly in Dexie
       const afterReload = await projectRepository.findById(project.id);
       expect(afterReload).toBeUndefined();
+    });
+  });
+
+  // ─── Cascade Delete Tests ───────────────────────────────────────────
+
+  describe('cascade delete', () => {
+    /** Helper: seed a note directly via repository. */
+    async function seedNote(projectId: string, title: string, opts?: Partial<Note>): Promise<Note> {
+      const now = new Date().toISOString();
+      const note: Note = {
+        id: crypto.randomUUID(),
+        projectId,
+        title,
+        content: '',
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+        ...opts,
+      };
+      await noteRepository.upsert(note);
+      return note;
+    }
+
+    /** Helper: seed a task directly via repository. */
+    async function seedTask(projectId: string, title: string, opts?: Partial<Task>): Promise<Task> {
+      const now = new Date().toISOString();
+      const task: Task = {
+        id: crypto.randomUUID(),
+        projectId,
+        title,
+        description: '',
+        status: 'todo',
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+        ...opts,
+      };
+      await taskRepository.upsert(task);
+      return task;
+    }
+
+    /** Helper: seed a file entry directly via repository. */
+    async function seedFile(projectId: string, name: string, opts?: Partial<FileEntry>): Promise<FileEntry> {
+      const now = new Date().toISOString();
+      const entry: FileEntry = {
+        id: crypto.randomUUID(),
+        projectId,
+        parentId: null,
+        name,
+        type: 'file',
+        content: '',
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+        ...opts,
+      };
+      await fileRepository.upsert(entry);
+      return entry;
+    }
+
+    it('should cascade-delete notes, tasks, and files when deleting a project', async () => {
+      const project = await projectService.createProject('Cascade Test');
+
+      // Seed child entities
+      const note = await seedNote(project.id, 'Test Note');
+      const task = await seedTask(project.id, 'Test Task');
+      const file = await seedFile(project.id, 'test.md');
+
+      // Verify children exist in Dexie
+      expect(await noteRepository.findById(note.id)).toBeDefined();
+      expect(await taskRepository.findById(task.id)).toBeDefined();
+      expect(await fileRepository.findById(file.id)).toBeDefined();
+
+      // Delete the project
+      await projectService.deleteProject(project.id);
+
+      // Project is gone
+      expect(await projectRepository.findById(project.id)).toBeUndefined();
+
+      // All children are gone from Dexie
+      expect(await noteRepository.findById(note.id)).toBeUndefined();
+      expect(await taskRepository.findById(task.id)).toBeUndefined();
+      expect(await fileRepository.findById(file.id)).toBeUndefined();
+    });
+
+    it('should succeed when deleting a project with no child records', async () => {
+      const project = await projectService.createProject('Empty Project');
+
+      // No children seeded — delete should not throw
+      await projectService.deleteProject(project.id);
+
+      expect(await projectRepository.findById(project.id)).toBeUndefined();
+      expect(useProjectStore.getState().projects).toHaveLength(0);
+    });
+
+    it('should not affect unrelated projects or their data', async () => {
+      const toDelete = await projectService.createProject('Delete Me');
+      const toKeep = await projectService.createProject('Keep Me');
+
+      // Seed children for BOTH projects
+      await seedNote(toDelete.id, 'Delete Note');
+      await seedTask(toDelete.id, 'Delete Task');
+      await seedFile(toDelete.id, 'delete.md');
+
+      const keepNote = await seedNote(toKeep.id, 'Keep Note');
+      const keepTask = await seedTask(toKeep.id, 'Keep Task');
+      const keepFile = await seedFile(toKeep.id, 'keep.md');
+
+      // Delete only the first project
+      await projectService.deleteProject(toDelete.id);
+
+      // Kept project and its children are untouched
+      expect(await projectRepository.findById(toKeep.id)).toBeDefined();
+      expect(await noteRepository.findById(keepNote.id)).toBeDefined();
+      expect(await taskRepository.findById(keepTask.id)).toBeDefined();
+      expect(await fileRepository.findById(keepFile.id)).toBeDefined();
+    });
+
+    it('should also delete soft-deleted child records', async () => {
+      const project = await projectService.createProject('Soft Delete Test');
+
+      // Seed soft-deleted children (isDeleted = true)
+      const softNote = await seedNote(project.id, 'Soft Note', { isDeleted: true });
+      const softTask = await seedTask(project.id, 'Soft Task', { isDeleted: true });
+      const softFile = await seedFile(project.id, 'soft.md', { isDeleted: true });
+
+      // Also seed an active child to verify both are removed
+      const activeNote = await seedNote(project.id, 'Active Note');
+
+      // Verify soft-deleted records exist in Dexie (they are just flagged, not gone)
+      expect(await noteRepository.findById(softNote.id)).toBeDefined();
+      expect(await taskRepository.findById(softTask.id)).toBeDefined();
+      expect(await fileRepository.findById(softFile.id)).toBeDefined();
+
+      await projectService.deleteProject(project.id);
+
+      // All children — soft-deleted AND active — are hard-deleted
+      expect(await noteRepository.findById(softNote.id)).toBeUndefined();
+      expect(await taskRepository.findById(softTask.id)).toBeUndefined();
+      expect(await fileRepository.findById(softFile.id)).toBeUndefined();
+      expect(await noteRepository.findById(activeNote.id)).toBeUndefined();
+    });
+
+    it('should cascade-delete files including folders and their children', async () => {
+      const project = await projectService.createProject('Folder Test');
+
+      // Seed a folder and a file inside it
+      const folder = await seedFile(project.id, 'docs', { type: 'folder' });
+      const childFile = await seedFile(project.id, 'readme.md', { parentId: folder.id });
+      const rootFile = await seedFile(project.id, 'index.ts');
+
+      await projectService.deleteProject(project.id);
+
+      // All file entries are gone — folders, children, root files
+      expect(await fileRepository.findById(folder.id)).toBeUndefined();
+      expect(await fileRepository.findById(childFile.id)).toBeUndefined();
+      expect(await fileRepository.findById(rootFile.id)).toBeUndefined();
+    });
+
+    it('should be atomic — project remains if child cleanup is simulated to fail', async () => {
+      const project = await projectService.createProject('Atomic Test');
+      const note = await seedNote(project.id, 'Should Survive');
+
+      // Temporarily sabotage noteRepository.removeByProject to throw inside the transaction
+      const originalRemoveByProject = noteRepository.removeByProject;
+      noteRepository.removeByProject = async () => {
+        throw new Error('Simulated failure');
+      };
+
+      // The delete should fail
+      await expect(projectService.deleteProject(project.id)).rejects.toThrow('Simulated failure');
+
+      // Restore original method
+      noteRepository.removeByProject = originalRemoveByProject;
+
+      // Project and note should both still exist (transaction rolled back)
+      expect(await projectRepository.findById(project.id)).toBeDefined();
+      expect(await noteRepository.findById(note.id)).toBeDefined();
     });
   });
 });

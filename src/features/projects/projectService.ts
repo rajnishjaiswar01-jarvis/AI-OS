@@ -15,7 +15,11 @@
  */
 
 import { projectRepository } from './projectRepository';
+import { noteRepository } from '@features/notes/noteRepository';
+import { taskRepository } from '@features/tasks/taskRepository';
+import { fileRepository } from '@features/files/fileRepository';
 import { settingsRepository } from '@core/db/settingsRepository';
+import { db } from '@core/db/database';
 import { useProjectStore } from './projectStore';
 import { DomainError } from '@core/errors/DomainError';
 import type { Project } from '@core/db/types';
@@ -122,19 +126,26 @@ export const projectService = {
   },
 
   /**
-   * Delete a project.
+   * Delete a project and all its associated data.
    *
-   * 1. Persist deletion
-   * 2. Remove from store
-   * 3. If deleted project was active, clear active
+   * Cascade-deletes all notes, tasks, and files belonging to the project
+   * inside a single Dexie transaction (atomic). If any step fails, the
+   * entire operation is rolled back — no orphaned records.
    *
-   * Note: In Sprint 2+, this will also cascade-delete files and tasks.
+   * 1. Atomic transaction: delete notes, tasks, files, then project
+   * 2. Update stores (only on successful persistence)
+   * 3. Clear persisted active project if needed
    */
   async deleteProject(id: string): Promise<void> {
     const wasActive = useProjectStore.getState().activeProjectId === id;
 
-    // Persist first
-    await projectRepository.remove(id);
+    // Atomic transaction across all 4 tables
+    await db.transaction('rw', db.projects, db.notes, db.tasks, db.files, async () => {
+      await noteRepository.removeByProject(id);
+      await taskRepository.removeByProject(id);
+      await fileRepository.removeByProject(id);
+      await projectRepository.remove(id);
+    });
 
     // Then update store (removeProject handles active project clearing)
     useProjectStore.getState().removeProject(id);

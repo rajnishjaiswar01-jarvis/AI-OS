@@ -52,4 +52,12 @@ export const noteRepository = {
       .filter((n) => !n.isDeleted)
       .count();
   },
+
+  /**
+   * Hard-delete ALL notes for a project (including soft-deleted).
+   * Used by project cascade deletion.
+   */
+  async removeByProject(projectId: string): Promise<void> {
+    await db.notes.where('projectId').equals(projectId).delete();
+  },
 };

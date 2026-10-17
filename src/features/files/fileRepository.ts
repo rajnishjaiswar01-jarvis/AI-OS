@@ -109,4 +109,12 @@ export const fileRepository = {
       .filter((e) => !e.isDeleted)
       .toArray();
   },
+
+  /**
+   * Hard-delete ALL file entries for a project (including soft-deleted).
+   * Used by project cascade deletion.
+   */
+  async removeByProject(projectId: string): Promise<void> {
+    await db.files.where('projectId').equals(projectId).delete();
+  },
 };

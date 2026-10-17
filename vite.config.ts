@@ -63,7 +63,7 @@ function devApiPlugin(): Plugin {
           res.statusCode = result.status;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(result.body));
-        } catch (err) {
+        } catch {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({

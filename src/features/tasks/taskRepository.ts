@@ -55,4 +55,12 @@ export const taskRepository = {
       .filter((t) => !t.isDeleted)
       .count();
   },
+
+  /**
+   * Hard-delete ALL tasks for a project (including soft-deleted).
+   * Used by project cascade deletion.
+   */
+  async removeByProject(projectId: string): Promise<void> {
+    await db.tasks.where('projectId').equals(projectId).delete();
+  },
 };
